@@ -1,0 +1,8 @@
+flask>=3.0
+requests>=2.31
+numpy>=1.26
+scipy>=1.11
+pillow>=10.0
+opencv-python-headless>=4.8
+# System dependency (not a pip package): FFmpeg 5+ with libx264, aac, libass, xfade support.
+#   macOS: brew install ffmpeg      Ubuntu/Debian: sudo apt install ffmpeg      Windows: winget install ffmpeg

@@ -1,0 +1,10 @@
+{
+  "appId": "com.storyfactory.app",
+  "appName": "Story Factory",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  }
+}

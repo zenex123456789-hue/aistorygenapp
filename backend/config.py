@@ -50,8 +50,6 @@ FFPROBE = os.getenv("FFPROBE_BIN", "ffprobe")
 
 HOST = os.getenv("SF_HOST", "127.0.0.1")
 PORT = int(os.getenv("SF_PORT", "8000"))
-# Shared "host mode": when set, everyone must enter this code before they can use the app.
-ACCESS_CODE = os.getenv("SF_ACCESS_CODE", "").strip()
 
 # Video constants (the product spec: vertical 9:16, 1080x1920)
 WIDTH, HEIGHT = 1080, 1920

@@ -1,7 +1,6 @@
 @echo off
 rem  AI Story Factory launcher for Windows.
-rem    start-windows.bat         run on this PC only          (http://127.0.0.1:8000)
-rem    start-windows.bat host    share with your group        (asks for a group access code)
+rem    start-windows.bat         runs the app on this PC       (http://127.0.0.1:8000)
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 set PYTHONUTF8=1
@@ -50,29 +49,6 @@ if errorlevel 1 (
   echo pip install failed. Scroll up to see why.
   pause
   exit /b 1
-)
-
-rem --- host mode: reachable by other devices, protected by a shared code
-if /i "%~1"=="host" (
-  if exist access-code.txt (
-    set /p SF_ACCESS_CODE=<access-code.txt
-  ) else (
-    set /p "SF_ACCESS_CODE=Pick a group access code - friends type it to get in: "
-  )
-  if not defined SF_ACCESS_CODE (
-    echo You need an access code to share the app.
-    pause
-    exit /b 1
-  )
-  set "SF_HOST=0.0.0.0"
-  echo.
-  echo Share one of these addresses with your group - same Wi-Fi, or your Tailscale address:
-  for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
-    set "ip=%%a"
-    set "ip=!ip: =!"
-    echo     http://!ip!:8000
-  )
-  echo If Windows asks about the firewall, allow Python on PRIVATE networks.
 )
 
 echo.

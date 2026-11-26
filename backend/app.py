@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import hashlib
-import hmac
 import json
 import random
 import shutil
 import time
 from pathlib import Path
 
-from flask import Flask, Response, abort, jsonify, redirect, request, send_file, send_from_directory
+from flask import Flask, abort, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 
 from . import audio_util, config, db, jobs, pipeline, providers
@@ -45,78 +44,6 @@ def _any_error(e):
     import traceback
     traceback.print_exc()
     return err(f"{type(e).__name__}: {e}", 500)
-
-
-# ------------------------------------------------------------------ access code (shared host mode)
-# Off unless SF_ACCESS_CODE is set. Meant for a small trusted group (friends on a private network):
-# one shared code, an HttpOnly cookie, and a small per-IP attempt limit. It is NOT per-user accounts.
-_OPEN_PATHS = {"/login", "/api/login", "/manifest.webmanifest", "/sw.js"}
-_fails: dict[str, list[float]] = {}
-
-
-def _auth_token() -> str:
-    return hmac.new(config.ACCESS_CODE.encode(), b"story-factory-access-v1", hashlib.sha256).hexdigest()
-
-
-def _authed() -> bool:
-    return hmac.compare_digest(request.cookies.get("sf_auth", ""), _auth_token())
-
-
-@app.before_request
-def _gate():
-    if not config.ACCESS_CODE:
-        return None
-    p = request.path
-    if p in _OPEN_PATHS or p.startswith("/icons/") or _authed():
-        return None
-    if p.startswith(("/api/", "/files/", "/refs/", "/preview/")):
-        return jsonify({"error": "Access code required", "login": "/login"}), 401
-    return redirect("/login")
-
-
-@app.get("/login")
-def login_page():
-    if not config.ACCESS_CODE or _authed():
-        return redirect("/")
-    return Response(_LOGIN_HTML, mimetype="text/html")
-
-
-@app.post("/api/login")
-def login():
-    if not config.ACCESS_CODE:
-        return jsonify({"ok": True})
-    ip = request.remote_addr or "?"
-    now = time.time()
-    recent = [t for t in _fails.get(ip, []) if now - t < 300]
-    if len(recent) >= 8:
-        return err("Too many wrong codes. Wait a few minutes and try again.", 429)
-    code = str((request.get_json(silent=True) or {}).get("code", "")).strip()
-    if not hmac.compare_digest(code.encode(), config.ACCESS_CODE.encode()):
-        recent.append(now)
-        _fails[ip] = recent
-        time.sleep(0.6)
-        return err("That code isn't right.", 401)
-    _fails.pop(ip, None)
-    resp = jsonify({"ok": True})
-    resp.set_cookie("sf_auth", _auth_token(), max_age=60 * 60 * 24 * 90, httponly=True,
-                    samesite="Lax", secure=request.is_secure)
-    return resp
-
-
-_LOGIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>Story Factory - enter code</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f1ff;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#1d1b2e}
-.c{background:#fff;border-radius:18px;padding:28px;width:min(360px,90vw);box-shadow:0 10px 40px #5b3df522}
-h1{font-size:20px;margin:0 0 6px}p{margin:0 0 18px;color:#666;font-size:14px}
-input{width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid #d9d3f5;border-radius:12px;font-size:16px}
-button{margin-top:12px;width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(135deg,#7c5cff,#ff5ca8);color:#fff;font-weight:700;font-size:16px}
-.e{color:#c0264b;font-size:13px;min-height:18px;margin-top:8px}</style></head><body><form class="c" id="f">
-<h1>Story Factory</h1><p>Enter the group access code to continue.</p>
-<input id="code" type="password" autocomplete="current-password" placeholder="Access code" autofocus>
-<button>Enter</button><div class="e" id="e"></div></form>
-<script>document.getElementById('f').onsubmit=async ev=>{ev.preventDefault();const e=document.getElementById('e');e.textContent='';
-try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:document.getElementById('code').value})});
-const d=await r.json().catch(()=>({}));if(r.ok)location.href='/';else e.textContent=d.error||'Something went wrong.';}catch{e.textContent='Cannot reach the server.';}}</script></body></html>"""
 
 
 # ------------------------------------------------------------------ static

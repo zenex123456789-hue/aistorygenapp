@@ -19,19 +19,9 @@ def banner() -> None:
         print(f"  {label}  {active['label']}  [{tag}]")
     print(f"  Data:     {config.DATA_DIR}")
     print(f"  Open:     http://{config.HOST}:{config.PORT}")
-    if config.ACCESS_CODE:
-        print("  Access:   shared code required (SF_ACCESS_CODE)")
     print()
 
 
-def _is_loopback(host: str) -> bool:
-    return host in ("127.0.0.1", "localhost", "::1")
-
-
 if __name__ == "__main__":
-    if not _is_loopback(config.HOST) and not config.ACCESS_CODE:
-        print("\n  Refusing to start: SF_HOST is %s (reachable by other devices) but SF_ACCESS_CODE is not set." % config.HOST)
-        print("  Anyone who can reach this PC could spend your API keys. Set a code, e.g.  set SF_ACCESS_CODE=pick-a-code\n")
-        sys.exit(1)
     banner()
     app.run(host=config.HOST, port=config.PORT, threaded=True, debug=False)

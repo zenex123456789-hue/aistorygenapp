@@ -6,7 +6,6 @@ export async function api(method, url, body) {
   try { res = await fetch(url, opt); } catch { throw new Error("Cannot reach the Story Factory server. Is `python run.py` still running?"); }
   let data = null;
   try { data = await res.json(); } catch { /* not json */ }
-  if (res.status === 401 && data && data.login) { location.href = data.login; throw new Error(data.error); }
   if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
   return data;
 }

@@ -25,31 +25,19 @@ With **no keys at all** the whole pipeline still runs on built-in offline engine
 immediately. Those engines are clearly labelled and are lower quality than real AI providers (see "What is real,
 what is a stand-in").
 
-## Using it with friends, on phones, or as an installed app
+## Install it as a Windows app (no Python needed)
 
-There are two ways to use it as a group. You can mix them.
+Download **`AI-Story-Factory-Setup.exe`**, run it, and open **AI Story Factory** from the desktop or Start menu. It opens in its own window.
+It bundles Python, the app and FFmpeg, installs for your user only (no admin password), and keeps your projects and keys in
+`%LOCALAPPDATA%\AIStoryFactory`, so updating or uninstalling never deletes them.
 
-**A. One shared copy (everyone works in the same projects).** One PC runs the app; everyone else opens it in a browser.
-1. On the host PC, double-click **`start-host.bat`** (or run `start-windows.bat host`). It asks for a **group access code** and prints the addresses to share.
-   The app refuses to listen on the network without a code, because anyone who reaches it could spend your API keys.
-2. Friends open `http://<host-address>:8000` and enter the code. Same Wi-Fi works. For friends elsewhere, use
-   [Tailscale](https://tailscale.com) (free): everyone installs it, joins one "tailnet", and uses the host's Tailscale address. Do not open the port on your router.
-3. On a phone, open the address in Chrome and choose **Add to Home screen** / **Install app**. It then behaves like an app. (iPhone: Safari, Share, Add to Home Screen.)
+* **Where to get it:** on GitHub open **Actions → Windows installer** and download the `AI-Story-Factory-Setup` artifact from the latest run
+  (run it again from **Run workflow** to rebuild). A published release also attaches it automatically when you push a tag like `v1.0.0`.
+* **API keys (optional):** create `%LOCALAPPDATA%\AIStoryFactory\.env` using the same lines as `.env.example`, then reopen the app.
+* **No window appears?** If Windows' built-in web view isn't available, the app opens in your default browser instead.
+* **Licence note:** the bundled FFmpeg is a GPL build (gyan.dev); its licence text ships in the `ffmpeg` folder next to the app.
 
-The access code is one shared code for a small trusted group. It is **not** per-person accounts: everyone sees and can change every project.
-Use `SF_ACCESS_CODE` (or `access-code.txt` next to `start-windows.bat`) to set it without being asked each time.
-
-**B. Everyone has their own copy.** Each person installs the Windows app (below) and keeps separate projects. Send finished MP4s to each other.
-
-### Windows installer (`AI-Story-Factory-Setup.exe`)
-Built in the cloud by GitHub Actions (**Actions → Windows installer → Run workflow**, or push a tag like `v1.0.0`). It bundles Python, the app and FFmpeg, installs per-user (no admin),
-and keeps your projects and keys in `%LOCALAPPDATA%\AIStoryFactory` so updates and uninstalls don't delete them. To add API keys, create `%LOCALAPPDATA%\AIStoryFactory\.env` (same format as `.env.example`).
-The bundled FFmpeg is a GPL build (gyan.dev); its licence text ships in the `ffmpeg` folder.
-
-### Android APK (`Story-Factory.apk`)
-Built by **Actions → Android APK**. It is a window onto a running Story Factory server (a host PC from option A, or a hosted one); the video engine does **not** run on the phone.
-On first launch type the server address (e.g. `192.168.1.20:8000`); it remembers it, and Back returns to that screen to switch. The APK is debug-signed: to install it, allow "install unknown apps" for your browser/files app.
-Publishing to Google Play needs a release-signed build (a keystore you control), which is not set up here. For most groups the Chrome "Install app" route above is simpler and also lets you save videos.
+Each person who installs it has their own separate projects.
 
 ## API keys: which ones, and what they unlock
 
@@ -123,10 +111,9 @@ setting is about twice as fast; `high` is slower). AI providers add their own la
 ```
 run.py                     start the server (python run.py)
 desktop.py                 the same app in a native window (what the Windows installer runs)
-start-windows.bat          one-click launcher; start-host.bat shares it with a group
+start-windows.bat          one-click launcher for running from source on Windows
 installer/                 Inno Setup script + icon for the Windows installer
-android-app/               thin Android wrapper (Capacitor) built by the APK workflow
-.github/workflows/         cloud builds: Windows installer, Android APK
+.github/workflows/         cloud build: Windows installer
 backend/app.py             Flask JSON API + static files
 backend/pipeline.py        stage orchestration (pause, resume, stale tracking)
 backend/jobs.py            background jobs + progress + cancel
@@ -145,8 +132,6 @@ Subclass `LLMProvider`, `TTSProvider`, `ImageProvider` or `VideoProvider` in `ba
 
 ## Troubleshooting
 
-* **Friends can't connect to the host:** check you're on the same network (or Tailscale), allow Python through Windows Firewall on *private* networks, and use the address printed by `start-host.bat`.
-* **"Refusing to start: SF_HOST is 0.0.0.0 ... SF_ACCESS_CODE is not set":** that's the safety check. Set a code (see above).
 
 * **"FFmpeg was not found"** – install FFmpeg and make sure `ffmpeg` is on PATH, or set `FFMPEG_BIN`.
 * **Key added but still "not connected"** – restart `python run.py`; `.env` is read at start-up.

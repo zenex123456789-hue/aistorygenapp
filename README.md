@@ -8,7 +8,18 @@ characters, scenes, voiceovers, captions, sound effects and music, plus titles, 
  every time the clock strikes twelve."          →  [ GENERATE STORY ]  →  video.mp4
 ```
 
-## Quick start
+## Download
+
+### [⬇ Download for Windows (AI-Story-Factory-Setup.exe)](https://github.com/zenex123456789-hue/aistorygenapp/releases/latest/download/AI-Story-Factory-Setup.exe)
+
+1. Download and run the installer. No Python or FFmpeg needed; it installs for your user only, with no admin password.
+2. Windows may show **"Windows protected your PC"** because the installer isn't code-signed. Click **More info → Run anyway**.
+3. Open **AI Story Factory** from the desktop or Start menu, type an idea and press **GENERATE STORY**.
+
+All versions are on the [Releases page](https://github.com/zenex123456789-hue/aistorygenapp/releases). Without any API keys it runs on built-in offline engines
+(basic writing, beep-style placeholder voices); add keys to unlock real AI, see [API keys](#api-keys-which-ones-and-what-they-unlock).
+
+## Run from source (developers)
 
 ```bash
 # 1. Requirements: Python 3.10+ and FFmpeg (with libx264 + libass)
@@ -31,11 +42,12 @@ Download **`AI-Story-Factory-Setup.exe`**, run it, and open **AI Story Factory**
 It bundles Python, the app and FFmpeg, installs for your user only (no admin password), and keeps your projects and keys in
 `%LOCALAPPDATA%\AIStoryFactory`, so updating or uninstalling never deletes them.
 
-* **Where to get it:** on GitHub open **Actions → Windows installer** and download the `AI-Story-Factory-Setup` artifact from the latest run
-  (run it again from **Run workflow** to rebuild). A published release also attaches it automatically when you push a tag like `v1.0.0`.
+* **Where to get it:** the [Releases page](https://github.com/zenex123456789-hue/aistorygenapp/releases). Publishing a release with a tag like `v1.0.0`
+  builds the installer in the cloud (**Actions → Windows installer**) and attaches `AI-Story-Factory-Setup.exe` to it a few minutes later.
+  You can also run that workflow by hand (**Run workflow**) and take the file from the run's **Artifacts**.
 * **API keys (optional):** create `%LOCALAPPDATA%\AIStoryFactory\.env` using the same lines as `.env.example`, then reopen the app.
 * **No window appears?** If Windows' built-in web view isn't available, the app opens in your default browser instead.
-* **Licence note:** the bundled FFmpeg is a GPL build (gyan.dev); its licence text ships in the `ffmpeg` folder next to the app.
+* **Licence note:** the bundled FFmpeg is a GPL build (gyan.dev); its licence text ships in the `ffmpeg` folder next to the app. FFmpeg source code: https://ffmpeg.org/download.html
 
 Each person who installs it has their own separate projects.
 

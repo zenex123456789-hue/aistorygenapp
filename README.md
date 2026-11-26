@@ -19,6 +19,24 @@ characters, scenes, voiceovers, captions, sound effects and music, plus titles, 
 All versions are on the [Releases page](https://github.com/zenex123456789-hue/aistorygenapp/releases). Without any API keys it runs on built-in offline engines
 (basic writing, beep-style placeholder voices); add keys to unlock real AI, see [API keys](#api-keys-which-ones-and-what-they-unlock).
 
+## Important to know
+
+* **Early release (v0.1.0).** The installer builds automatically and passes a start-up self-test, but it is new. If something breaks,
+  open an Issue and attach `%LOCALAPPDATA%\AIStoryFactory\app.log` (see [Troubleshooting](#troubleshooting)).
+* **Needs:** Windows 10 or 11 (64-bit). The installer is about 137 MB. Internet is only needed for the AI providers you connect; the built-in engines work offline.
+* **Out of the box it is a basic version.** With no API keys you get the built-in template writer and *beep-style placeholder voices* (not real speech).
+  For better writing and real voices add keys, see [API keys](#api-keys-which-ones-and-what-they-unlock).
+* **Your data stays on your PC.** Projects and finished videos are in `%LOCALAPPDATA%\AIStoryFactory\data`. Keys are read from a file on your PC, never shown in the
+  browser or sent anywhere except to the provider they belong to. Updating or uninstalling does not delete your projects.
+* **Windows security warnings.** The installer is not code-signed, so SmartScreen shows "Windows protected your PC" (More info → Run anyway), and some antivirus tools
+  may flag unsigned apps built this way. The installer is built from the source in this repo by GitHub Actions; you can read and rebuild it yourself.
+* **One user, no accounts.** Everyone who installs it has their own separate projects. Do not expose it to the internet.
+* **Vendor connections are not fully proven.** The Anthropic, OpenAI, ElevenLabs and Runway adapters were tested against a mock server only, not the live services.
+  Errors are shown verbatim. Details in [What is real, what is a stand-in](#what-is-real-what-is-a-stand-in-please-read).
+* **The viral score is an estimate** of story craft. Nothing can predict or guarantee views.
+* **Rights are yours to check:** only upload references you have the right to use, and follow each platform's rules for AI-generated content when you post.
+* **Not affiliated with Roblox.** The look is Roblox-*inspired* and uses no Roblox characters or assets.
+
 ## Run from source (developers)
 
 ```bash
@@ -36,24 +54,20 @@ With **no keys at all** the whole pipeline still runs on built-in offline engine
 immediately. Those engines are clearly labelled and are lower quality than real AI providers (see "What is real,
 what is a stand-in").
 
-## Install it as a Windows app (no Python needed)
+## Windows app details
 
-Download **`AI-Story-Factory-Setup.exe`**, run it, and open **AI Story Factory** from the desktop or Start menu. It opens in its own window.
-It bundles Python, the app and FFmpeg, installs for your user only (no admin password), and keeps your projects and keys in
-`%LOCALAPPDATA%\AIStoryFactory`, so updating or uninstalling never deletes them.
-
-* **Where to get it:** the [Releases page](https://github.com/zenex123456789-hue/aistorygenapp/releases). Publishing a release with a tag like `v1.0.0`
-  builds the installer in the cloud (**Actions → Windows installer**) and attaches `AI-Story-Factory-Setup.exe` to it a few minutes later.
-  You can also run that workflow by hand (**Run workflow**) and take the file from the run's **Artifacts**.
-* **API keys (optional):** create `%LOCALAPPDATA%\AIStoryFactory\.env` using the same lines as `.env.example`, then reopen the app.
-* **No window appears?** If Windows' built-in web view isn't available, the app opens in your default browser instead.
+* **What the installer contains:** Python, the app and FFmpeg. It installs for your user only (no admin password) and opens in its own window.
+  If Windows' built-in web view (WebView2) isn't available, the app opens in your default browser instead.
+* **Where files go:** program in `%LOCALAPPDATA%\Programs\AI Story Factory`, your projects, videos and log in `%LOCALAPPDATA%\AIStoryFactory`.
+* **Adding API keys:** create `%LOCALAPPDATA%\AIStoryFactory\.env` (same lines as `.env.example`), then close and reopen the app.
+* **Uninstall:** Windows Settings → Apps → AI Story Factory. Your projects stay until you delete the `AIStoryFactory` folder yourself.
+* **How the installer is made:** publishing a release with a tag like `v1.0.0` runs **Actions → Windows installer**, which builds it and attaches
+  `AI-Story-Factory-Setup.exe` to that release a few minutes later. You can also run it by hand (**Run workflow**) and take the file from the run's **Artifacts**.
 * **Licence note:** the bundled FFmpeg is a GPL build (gyan.dev); its licence text ships in the `ffmpeg` folder next to the app. FFmpeg source code: https://ffmpeg.org/download.html
-
-Each person who installs it has their own separate projects.
 
 ## API keys: which ones, and what they unlock
 
-Put keys in `.env` (copied from `.env.example`) and restart `python run.py`. Keys are read by the server only and are
+Put keys in `.env` and restart the app. (Installed app: `%LOCALAPPDATA%\AIStoryFactory\.env`. From source: `.env` next to `run.py`, copied from `.env.example`.) Keys are read by the server only and are
 never sent to the browser. **Settings** in the dashboard shows which keys were detected and has a *Test* button.
 
 | You want | Set | Notes |
@@ -144,9 +158,11 @@ Subclass `LLMProvider`, `TTSProvider`, `ImageProvider` or `VideoProvider` in `ba
 
 ## Troubleshooting
 
-
-* **"FFmpeg was not found"** – install FFmpeg and make sure `ffmpeg` is on PATH, or set `FFMPEG_BIN`.
-* **Key added but still "not connected"** – restart `python run.py`; `.env` is read at start-up.
+* **The download button says 404:** the installer is only attached to a *published* release, and a few minutes after publishing. If the repo is private, you must be signed in to GitHub as someone with access.
+* **The app won't open / closes straight away:** look at `%LOCALAPPDATA%\AIStoryFactory\app.log` and send it with your bug report.
+* **Windows or antivirus blocks the installer:** see "Windows security warnings" above. Only run it if you downloaded it from this repo's Releases page.
+* **"FFmpeg was not found" (running from source only)** – install FFmpeg and make sure `ffmpeg` is on PATH, or set `FFMPEG_BIN`.
+* **Key added but still "not connected"** – restart the app; `.env` is read at start-up.
 * **Provider error in the pipeline bar** – read the message; a 401/403 means a wrong or unauthorised key, 429 means rate
   limit. Use *Retry* after fixing it; finished stages are kept.
 * **Render is slow** – set Quality to *Draft* in Video Renderer while iterating.

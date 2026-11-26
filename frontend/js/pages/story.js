@@ -156,7 +156,7 @@ function viralCard(p) {
   const circ = 2 * Math.PI * 50;
   const col = e.overall >= 80 ? "#19b37a" : e.overall >= 65 ? "#6c5ce7" : "#e89b0c";
   const ring = h("div", { class: "ring" });
-  ring.innerHTML = `<svg width="118" height="118" viewBox="0 0 118 118"><circle cx="59" cy="59" r="50" fill="none" stroke="#eceef8" stroke-width="11"/><circle cx="59" cy="59" r="50" fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - e.overall / 100)}" style="transition:stroke-dashoffset .8s ease"/></svg><b>${e.overall}</b>`;
+  ring.innerHTML = `<svg width="118" height="118" viewBox="0 0 118 118"><circle cx="59" cy="59" r="50" fill="none" style="stroke:var(--soft)" stroke-width="11"/><circle cx="59" cy="59" r="50" fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - e.overall / 100)}" style="transition:stroke-dashoffset .8s ease"/></svg><b>${e.overall}</b>`;
   const crit = Object.entries(e.criteria).map(([k, v]) => h("div", { class: "crit" }, h("span", (e.labels && e.labels[k]) || title(k)), h("div", { class: "track" }, h("div", { class: v < 65 ? "low" : "", style: { width: v + "%" } })), h("b", v)));
   const list = (items, mapper) => h("div", { class: "col gap-s" }, items.map(mapper));
   const box = (txt) => h("div", { class: "listbox" }, txt, copyBtn(txt));

@@ -65,6 +65,7 @@ DEFAULT_SETTINGS = {
     "tts_provider": env("TTS_PROVIDER", "auto"),
     "image_provider": env("IMAGE_PROVIDER", "auto"),
     "video_provider": env("VIDEO_PROVIDER", "auto"),
+    "theme": "system",               # system | light | dark
     # render defaults
     "fps": 24,
     "quality": "standard",          # draft | standard | high

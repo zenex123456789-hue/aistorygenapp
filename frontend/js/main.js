@@ -10,6 +10,7 @@ import * as voices from "./pages/voices.js";
 import * as render from "./pages/render.js";
 import * as files from "./pages/files.js";
 import * as settings from "./pages/settings.js";
+import { applyTheme, setTheme, resolved } from "./theme.js";
 
 const PAGES = [
   { id: "references", label: "References", icon: "image", mod: references, stages: [] },
@@ -45,7 +46,7 @@ function renderNav() {
     const offline = ["llm", "tts"].filter((k) => act(k).offline);
     document.getElementById("foot").replaceChildren(
       offline.length ? h("div", { class: "badge warn" }, "Offline mode") : h("div", { class: "badge ok" }, "AI connected"),
-      h("div", { style: { marginTop: "6px" } }, offline.length ? "Add API keys in .env for full-quality AI. See Settings." : "Providers connected."));
+      h("div", { style: { marginTop: "6px" } }, offline.length ? "Add API keys for full-quality AI. See Settings." : (caps.shared_keys && caps.shared_keys.length ? "Using the group's shared keys." : "Providers connected.")));
   }
 }
 
@@ -69,7 +70,10 @@ function renderTopbar() {
       }, "danger") : null),
     h("button", { class: "btn sm", onclick: async () => {
       const p = await post("/api/projects", { name: "Untitled project", idea: "", options: S.project?.options }); await loadProjects(); await selectProject(p.id); location.hash = "#/story";
-    } }, icon("plus", 15), "New project"));
+    } }, icon("plus", 15), "New project"),
+    h("span", { class: "spacer" }),
+    h("button", { class: "btn themebtn", title: resolved() === "dark" ? "Switch to light mode" : "Switch to dark mode", "aria-label": "Toggle dark mode",
+      onclick: () => setTheme(resolved() === "dark" ? "light" : "dark") }, icon(resolved() === "dark" ? "sun" : "moon", 17)));
 }
 
 // ---------------------------------------------------------------- pipeline bar
@@ -135,6 +139,7 @@ function navigate() {
 window.addEventListener("hashchange", navigate);
 on("project", () => { renderTopbar(); renderNav(); renderPipe(); renderPage(); });
 on("projects", renderTopbar);
+on("theme", renderTopbar);
 on("job", () => { renderPipe(); renderNav(); });
 on("jobdone", () => { renderPipe(); });
 on("styles", () => { if (S.page === "references" || S.page === "story") renderPage(); });
@@ -144,6 +149,7 @@ window.__rerender = renderPage;
 (async function boot() {
   try {
     await Promise.all([loadCaps(), loadProjects(), loadStyles(), loadRefs()]);
+    applyTheme(S.caps.settings.theme);
     if (!S.projects.find((p) => p.id === S.pid)) S.pid = S.projects[0]?.id || "";
     S.page = pageFromHash();
     await selectProject(S.pid);

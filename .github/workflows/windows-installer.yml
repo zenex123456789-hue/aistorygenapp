@@ -49,6 +49,30 @@ jobs:
         shell: pwsh
         run: Copy-Item ffmpeg-bundle dist\AIStoryFactory\ffmpeg -Recurse
 
+      # Optional: bake the group's shared keys into this build. Add them under Settings > Secrets and variables > Actions
+      # (names ANTHROPIC_API_KEY and ELEVENLABS_API_KEY). Anyone who has the installer can extract them, so this only
+      # happens while the repository is PRIVATE; on a public repository the keys are never embedded.
+      - name: Add shared API keys (optional)
+        shell: pwsh
+        env:
+          REPO_PRIVATE: ${{ github.event.repository.private }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: |
+          if ($env:REPO_PRIVATE -ne "true") {
+            Write-Host "Repository is not private: NOT embedding any keys."
+            exit 0
+          }
+          $lines = @()
+          if ($env:ANTHROPIC_API_KEY)  { $lines += "ANTHROPIC_API_KEY=$($env:ANTHROPIC_API_KEY)" }
+          if ($env:ELEVENLABS_API_KEY) { $lines += "ELEVENLABS_API_KEY=$($env:ELEVENLABS_API_KEY)" }
+          if ($lines.Count -eq 0) {
+            Write-Host "No shared keys configured: building without them."
+            exit 0
+          }
+          Set-Content -Path dist\AIStoryFactory\builtin.env -Value $lines -Encoding utf8
+          Write-Host "Embedded $($lines.Count) shared key(s). Values are hidden."
+
       - name: Self-test the built app
         shell: pwsh
         env:

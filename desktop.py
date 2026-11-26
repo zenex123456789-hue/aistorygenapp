@@ -54,15 +54,39 @@ def hide_child_consoles() -> None:
     subprocess.Popen.__init__ = init
 
 
-def load_user_env(home: Path) -> None:
-    f = home / ".env"
+def read_env_file(f: Path) -> dict:
+    out: dict = {}
     if not f.exists():
-        return
-    for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+        return out
+    for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+            v = v.strip().strip('"').strip("'")
+            if k.strip() and v:                  # an empty "KEY=" line must not hide a real key from another source
+                out[k.strip()] = v
+    return out
+
+
+def load_user_env(home: Path) -> None:
+    """Keys the user put in %LOCALAPPDATA%\\AIStoryFactory\\.env. A real environment variable still wins."""
+    for k, v in read_env_file(home / ".env").items():
+        os.environ.setdefault(k, v)
+
+
+def load_builtin_env(folder: Path) -> list:
+    """Shared keys baked into this build (builtin.env, written by the GitHub workflow from repository secrets).
+
+    Lowest priority: environment variables and the user's own .env override them. Returns the key NAMES that were
+    applied (never the values) so the app can tell the user the shared keys are in use.
+    """
+    applied = []
+    for k, v in read_env_file(folder / "builtin.env").items():
+        if not os.environ.get(k):
+            os.environ[k] = v
+            applied.append(k)
+    os.environ["SF_SHARED_KEYS"] = ",".join(applied)
+    return applied
 
 
 def pick_port() -> int:
@@ -105,14 +129,18 @@ def selftest(port: int, home: Path) -> int:
             health = json.loads(r.read())
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=10) as r:
             index_ok = r.status == 200 and b"Story Factory" in r.read()
-        result.update(health=health, index_ok=index_ok, ok=bool(health.get("ok") and health.get("ffmpeg") and index_ok))
+        shared = [k for k in os.environ.get("SF_SHARED_KEYS", "").split(",") if k]
+        # If this build carries shared keys they must actually have been picked up, or the group would get an app that silently has no AI.
+        keys_ok = bool(shared) or not (HERE / "builtin.env").exists()
+        result.update(health=health, index_ok=index_ok, shared_keys=shared, keys_ok=keys_ok,
+                      ok=bool(health.get("ok") and health.get("ffmpeg") and index_ok and keys_ok))
     except Exception as e:  # noqa: BLE001
         result["error"] = f"{type(e).__name__}: {e}"
     (home / "selftest.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     return 0 if result["ok"] else 1
 
 
-def show_window(url: str) -> None:
+def show_window(url: str, home: Path) -> None:
     """Native window via pywebview (Edge WebView2). If that is unavailable, fall back to the default browser."""
     try:
         import webview
@@ -121,7 +149,11 @@ def show_window(url: str) -> None:
         except Exception:  # noqa: BLE001
             pass
         webview.create_window("AI Story Factory", url, width=1280, height=860, min_size=(480, 640))
-        webview.start()
+        try:
+            # keep the window's browser storage between launches (the theme is also saved by the app itself)
+            webview.start(private_mode=False, storage_path=str(home / "webview"))
+        except TypeError:
+            webview.start()
         return
     except Exception as e:  # noqa: BLE001
         print("Native window unavailable, using your browser instead:", repr(e))
@@ -149,6 +181,8 @@ def main() -> int:
         os.environ.setdefault("FFMPEG_BIN", str(ff / "ffmpeg.exe"))
         os.environ.setdefault("FFPROBE_BIN", str(ff / "ffprobe.exe"))
     load_user_env(home)
+    load_builtin_env(HERE)
+    os.environ["SF_ENV_FILE"] = str(home / ".env")
     port = pick_port()
     os.environ["SF_PORT"] = str(port)
     os.environ["SF_HOST"] = "127.0.0.1"
@@ -160,7 +194,7 @@ def main() -> int:
     if not wait_for(port):
         print("Server failed to start; see app.log")
         return 1
-    show_window(f"http://127.0.0.1:{port}")
+    show_window(f"http://127.0.0.1:{port}", home)
     return 0
 
 

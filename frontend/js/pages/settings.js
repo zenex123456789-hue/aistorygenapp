@@ -1,6 +1,7 @@
 import { post, put } from "../api.js";
 import { S, loadCaps } from "../state.js";
 import { h, icon, toast, field, select, toggle, slider, title } from "../ui.js";
+import { getMode, setTheme } from "../theme.js";
 
 const KINDS = [
   ["llm", "Story writer (LLM)", "Writes the story, characters, script and the viral critique."],
@@ -12,10 +13,23 @@ const KINDS = [
 export function render(root) {
   const caps = S.caps, st = caps.settings;
   root.append(h("div", { class: "page-head" }, h("h1", "Settings"),
-    h("p", "Connect providers and tune the pipeline. API keys are read from the server's .env file only; they are never sent to this page. After editing .env, restart the server.")));
+    h("p", "Connect providers and tune the pipeline. API keys are read by the app itself and are never sent to this page. After editing your .env file, restart the app.")));
 
-  root.append(h("div", { class: "notice", style: { marginBottom: "16px" } }, icon("check", 18), h("div",
-    h("b", "How to connect a provider: "), "copy ", h("code", ".env.example"), " to ", h("code", ".env"), ", paste the key next to its name, then restart ", h("code", "python run.py"), ". The status below turns green when the key is detected.")));
+  const NAMES = { ANTHROPIC_API_KEY: "Anthropic Claude", ELEVENLABS_API_KEY: "ElevenLabs", OPENAI_API_KEY: "OpenAI", RUNWAY_API_KEY: "Runway" };
+  if (caps.shared_keys && caps.shared_keys.length) {
+    root.append(h("div", { class: "notice warn", style: { marginBottom: "16px" } }, icon("alert", 18), h("div",
+      h("b", "Shared keys are in use: "), caps.shared_keys.map((k) => NAMES[k] || k).join(", "), ". They came built into this app from whoever made it, and what you generate is billed to their account, so keep it to what you need. To use your own key instead, add it to ",
+      h("code", caps.env_file || ".env"), " and restart the app; your key takes priority.")));
+  }
+  root.append(h("div", { class: "notice", style: { marginBottom: "16px" } }, icon("check", 18), caps.env_file
+    ? h("div", h("b", "How to connect your own provider: "), "open ", h("code", caps.env_file), " in Notepad (create it if it is missing), add a line such as ", h("code", "ANTHROPIC_API_KEY=your-key"), ", save, then restart the app. The status below turns green when the key is detected.")
+    : h("div", h("b", "How to connect a provider: "), "copy ", h("code", ".env.example"), " to ", h("code", ".env"), ", paste the key next to its name, then restart ", h("code", "python run.py"), ". The status below turns green when the key is detected.")));
+
+  const THEMES = [["system", "monitor", "Match system"], ["light", "sun", "Light"], ["dark", "moon", "Dark"]];
+  root.append(h("div", { class: "card", style: { marginBottom: "16px" } },
+    h("div", { class: "card-head" }, h("div", { class: "grow" }, h("h3", "Appearance"), h("div", { class: "small muted" }, "Pick a light or dark look, or follow your device."))),
+    h("div", { class: "seg", role: "group", "aria-label": "Theme" }, THEMES.map(([id, ic, label]) =>
+      h("button", { class: getMode() === id ? "on" : "", "aria-pressed": getMode() === id ? "true" : "false", onclick: async () => { await setTheme(id); window.__rerender(); } }, icon(ic, 15), label)))));
 
   KINDS.forEach(([kind, label, sub]) => {
     const group = caps.providers[kind];

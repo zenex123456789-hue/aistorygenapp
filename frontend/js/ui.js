@@ -34,6 +34,8 @@ const ICONS = {
   play: "M6 4l14 8-14 8z", plus: "M12 5v14 M5 12h14", trash: "M3 6h18 M8 6V4h8v2 M19 6l-1 14H6L5 6", download: "M12 3v12 M7 10l5 5 5-5 M5 21h14",
   edit: "M12 20h9 M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z", check: "M5 12l5 5 9-10", x: "M6 6l12 12 M18 6L6 18", refresh: "M21 12a9 9 0 11-3-6.7 M21 4v5h-5",
   copy: "M9 9h11v11H9z M5 15H4V4h11v1", chevron: "M6 9l6 6 6-6", wand: "M15 4V2 M15 16v-2 M8 9h2 M20 9h2 M17.8 11.8L19 13 M17.8 6.2L19 5 M3 21l9-9 M12.2 6.2L11 5",
+  sun: "M12 17a5 5 0 100-10 5 5 0 000 10z M12 1v2 M12 21v2 M4.2 4.2l1.4 1.4 M18.4 18.4l1.4 1.4 M1 12h2 M21 12h2 M4.2 19.8l1.4-1.4 M18.4 5.6l1.4-1.4",
+  moon: "M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z", monitor: "M3 4h18a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1V5a1 1 0 011-1z M8 21h8 M12 17v4",
   stop: "M6 6h12v12H6z", alert: "M12 9v4 M12 17h.01 M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z", video: "M23 7l-7 5 7 5z M3 5h13a2 2 0 012 2v10a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2z",
 };
 export function icon(name, size = 18) {
@@ -125,5 +127,5 @@ export function busy(btn, fn) {
   };
 }
 export function empty(iconName, text, sub) {
-  return h("div", { class: "empty" }, icon(iconName, 40), h("div", { style: { fontWeight: 600, color: "#3b4068" } }, text), sub ? h("div", { class: "small" }, sub) : null);
+  return h("div", { class: "empty" }, icon(iconName, 40), h("div", { style: { fontWeight: 600, color: "var(--label)" } }, text), sub ? h("div", { class: "small" }, sub) : null);
 }

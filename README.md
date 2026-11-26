@@ -16,6 +16,9 @@ characters, scenes, voiceovers, captions, sound effects and music, plus titles, 
 2. Windows may show **"Windows protected your PC"** because the installer isn't code-signed. Click **More info → Run anyway**.
 3. Open **AI Story Factory** from the desktop or Start menu, type an idea and press **GENERATE STORY**.
 
+**Android and iPhone/iPad:** there is no phone download yet. The video engine (Python + FFmpeg) cannot run on a phone, so a phone app would have to talk to a copy of
+this app running on a computer or server. See [Phones](#phones-android-and-ios) for the options.
+
 All versions are on the [Releases page](https://github.com/zenex123456789-hue/aistorygenapp/releases). Without any API keys it runs on built-in offline engines
 (basic writing, beep-style placeholder voices); add keys to unlock real AI, see [API keys](#api-keys-which-ones-and-what-they-unlock).
 
@@ -23,6 +26,9 @@ All versions are on the [Releases page](https://github.com/zenex123456789-hue/ai
 
 * **Early release (v0.1.0).** The installer builds automatically and passes a start-up self-test, but it is new. If something breaks,
   open an Issue and attach `%LOCALAPPDATA%\AIStoryFactory\app.log` (see [Troubleshooting](#troubleshooting)).
+* **Dark mode:** **Settings → Appearance** has *Light*, *Dark* and *Match system*, and the sun/moon button at the top right flips between light and dark. The choice is remembered.
+* **Shared keys (optional, for a private group):** a build can carry the maker's Anthropic and ElevenLabs keys so friends do not need their own. Read
+  [Shared keys for a private group](#shared-keys-for-a-private-group) before turning this on: whoever has the installer can extract those keys.
 * **Needs:** Windows 10 or 11 (64-bit). The installer is about 137 MB. Internet is only needed for the AI providers you connect; the built-in engines work offline.
 * **Out of the box it is a basic version.** With no API keys you get the built-in template writer and *beep-style placeholder voices* (not real speech).
   For better writing and real voices add keys, see [API keys](#api-keys-which-ones-and-what-they-unlock).
@@ -59,7 +65,7 @@ what is a stand-in").
 * **What the installer contains:** Python, the app and FFmpeg. It installs for your user only (no admin password) and opens in its own window.
   If Windows' built-in web view (WebView2) isn't available, the app opens in your default browser instead.
 * **Where files go:** program in `%LOCALAPPDATA%\Programs\AI Story Factory`, your projects, videos and log in `%LOCALAPPDATA%\AIStoryFactory`.
-* **Adding API keys:** create `%LOCALAPPDATA%\AIStoryFactory\.env` (same lines as `.env.example`), then close and reopen the app.
+* **Adding API keys:** create `%LOCALAPPDATA%\AIStoryFactory\.env` (same lines as `.env.example`), then close and reopen the app. Keys built into the installer are described in [Shared keys](#shared-keys-for-a-private-group); yours take priority.
 * **Uninstall:** Windows Settings → Apps → AI Story Factory. Your projects stay until you delete the `AIStoryFactory` folder yourself.
 * **How the installer is made:** publishing a release with a tag like `v1.0.0` runs **Actions → Windows installer**, which builds it and attaches
   `AI-Story-Factory-Setup.exe` to that release a few minutes later. You can also run it by hand (**Run workflow**) and take the file from the run's **Artifacts**.
@@ -80,6 +86,40 @@ never sent to the browser. **Settings** in the dashboard shows which keys were d
 
 A sensible first setup: **one LLM key + one voice key** (for example `ANTHROPIC_API_KEY` + `ELEVENLABS_API_KEY`). You do
 not need an AI video provider: the built-in renderer animates the characters itself.
+
+## Shared keys for a private group
+
+You can make the installer carry **your** Anthropic and ElevenLabs keys, so everyone in your group gets real AI without setting anything up.
+
+**What this is not:** it does not use a Claude.ai plan (Free, Pro, Max). Those subscriptions do not include API access and Anthropic does not allow plan sign-ins to be used inside other apps.
+Claude's API is a separate, pay-as-you-go product. You create an API key at <https://console.anthropic.com/> (Settings → API keys) and add a spend limit there. ElevenLabs works the same way: a key from your ElevenLabs profile.
+
+**Set it up (once):**
+
+1. Make the keys. Use keys made only for this group, so you can revoke them without touching anything else. Set a spend limit on the Anthropic key; on the ElevenLabs key set a credit limit and, if you can, restrict it to text-to-speech.
+2. In this repo go to **Settings → Secrets and variables → Actions → New repository secret** and add `ANTHROPIC_API_KEY` and/or `ELEVENLABS_API_KEY`.
+3. Make a new release (for example `v0.2.0`) or run **Actions → Windows installer → Run workflow**. The build writes the keys into a file next to the app, and the app's start-up self-test fails the build if they were not picked up.
+4. Send your group the new installer. **Settings** in the app shows an amber notice saying shared keys are in use, and the sidebar says so too.
+
+**Know the risks:**
+
+* **The keys are inside the installer.** Anyone who has the installer or the installed app can read them (they are in `builtin.env` in the program folder). Treat the installer like the keys themselves: only give it to people you trust, and revoke and replace the keys if it spreads.
+* **Keep this repository private.** The build refuses to embed keys while the repository is public, but do not rely on that alone. Never paste a key into an issue, a commit or a chat.
+* **Everything your friends generate is billed to you.** The spend limits are your safety net, so set them.
+* **Their own key wins.** If someone puts a key in `%LOCALAPPDATA%\AIStoryFactory\.env`, that is used instead of the shared one.
+* **A safer design for a bigger group** is a small server that holds the keys and checks who is calling, so no key ever leaves it. That is a different (hosted) setup; it is not what this installer does.
+
+## Phones (Android and iOS)
+
+There is no Android or iOS download, and it would not be honest to make one that pretends to work: the app renders video with FFmpeg and OpenCV on a computer, which phones cannot run. The workable designs all need a copy of this app running somewhere:
+
+| Option | What your friends do | What it needs |
+|---|---|---|
+| **Run it on a PC and open it on the phone** | Open `http://<that PC's address>:8000` in the phone's browser on the same Wi-Fi | Run [from source](#run-from-source-developers) with `SF_HOST=0.0.0.0` (the installed app only listens on the PC itself). Your PC stays on; there is no sign-in, so only use a network you trust |
+| **Host it on a server, install as a web app** | Open the link, then *Add to Home Screen* (works on Android and iPhone/iPad) | A small cloud server, a login, and you paying for hosting and AI usage |
+| **Store apps (APK, TestFlight/App Store)** | Install like any app | The hosted server above, plus Android signing, and for iOS an Apple Developer account (US$99/year), a Mac build step and Apple review |
+
+None of these are built in this repo yet. The phone-size layout is already there (bottom tab bar, larger touch targets), so a hosted web app is the shortest step.
 
 ## How it works
 
@@ -163,6 +203,8 @@ Subclass `LLMProvider`, `TTSProvider`, `ImageProvider` or `VideoProvider` in `ba
 * **Windows or antivirus blocks the installer:** see "Windows security warnings" above. Only run it if you downloaded it from this repo's Releases page.
 * **"FFmpeg was not found" (running from source only)** – install FFmpeg and make sure `ffmpeg` is on PATH, or set `FFMPEG_BIN`.
 * **Key added but still "not connected"** – restart the app; `.env` is read at start-up.
+* **Settings says shared keys are in use but a request fails with 401/403 or 429** – the shared key was revoked, ran out of credit or hit its spend limit. Ask whoever made the app, or add your own key.
+* **The theme resets** – use **Settings → Appearance**; if the app can't save settings the choice only lasts until you close it.
 * **Provider error in the pipeline bar** – read the message; a 401/403 means a wrong or unauthorised key, 429 means rate
   limit. Use *Retry* after fixing it; finished stages are kept.
 * **Render is slow** – set Quality to *Draft* in Video Renderer while iterating.

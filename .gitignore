@@ -12,3 +12,5 @@ installer-out/
 ffmpeg-bundle/
 ffsrc/
 ffmpeg.zip
+# shared keys baked into a build; written by the workflow, never committed
+builtin.env

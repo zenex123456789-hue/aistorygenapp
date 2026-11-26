@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
 import shutil
 import time
@@ -69,7 +70,9 @@ def health():
 @app.get("/api/capabilities")
 def capabilities():
     caps = providers.capabilities()
+    shared = [k for k in os.environ.get("SF_SHARED_KEYS", "").split(",") if k]     # names only, never values
     return jsonify({"providers": caps, "ffmpeg": audio_util.ffmpeg_ok(), "settings": db.get_settings(),
+                    "shared_keys": shared, "env_file": os.environ.get("SF_ENV_FILE", ""),
                     "enums": {"genres": S.GENRES, "tones": S.TONES, "audiences": S.AUDIENCES, "lengths": list(S.LENGTHS), "durations": S.DURATIONS,
                               "location_kinds": S.LOCATION_KINDS, "emotions": S.EMOTIONS, "deliveries": S.DELIVERIES, "animations": S.ANIMATIONS,
                               "forms": S.FORMS, "effects": S.EFFECTS, "camera_shots": S.CAMERA_SHOTS, "camera_moves": S.CAMERA_MOVES,

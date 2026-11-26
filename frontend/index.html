@@ -6,6 +6,17 @@
   <title>AI Story Factory</title>
   <meta name="theme-color" content="#7c5cff">
   <link rel="icon" href="/icons/icon-192.png">
+  <meta name="color-scheme" content="light dark">
+  <script>
+    // Apply the saved theme before anything paints, so there is no light flash in dark mode.
+    (function () {
+      var m = "system";
+      try { m = localStorage.getItem("sf_theme") || "system"; } catch (e) {}
+      var dark = m === "dark" || (m === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      document.documentElement.dataset.themePref = m;
+    })();
+  </script>
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>

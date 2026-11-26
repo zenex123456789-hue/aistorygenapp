@@ -25,7 +25,7 @@ export function render(root) {
   const drop = h("div", { class: "drop", onclick: () => input.click(),
     ondragover: (e) => { e.preventDefault(); drop.classList.add("over"); }, ondragleave: () => drop.classList.remove("over"),
     ondrop: (e) => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files.length) upload(e.dataTransfer.files); } },
-    icon("download", 30), h("div", { style: { fontWeight: 600, color: "#3b4068" } }, "Drop reference videos or images here, or click to browse"),
+    icon("download", 30), h("div", { style: { fontWeight: 600, color: "var(--label)" } }, "Drop reference videos or images here, or click to browse"),
     h("div", { class: "small" }, "mp4, mov, webm, png, jpg, webp · only use material you have the right to analyse"), input);
   root.append(h("div", { class: "card" }, drop));
 

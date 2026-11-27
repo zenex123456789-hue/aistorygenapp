@@ -4,13 +4,13 @@ from __future__ import annotations
 from .. import db
 from .base import (ImageProvider, LLMProvider, Provider, ProviderError, ProviderUnavailable,  # noqa: F401
                    TTSProvider, VideoProvider)
-from .llm import AnthropicLLM, OfflineLLM, OpenAILLM
+from .llm import AnthropicLLM, CompatibleLLM, OfflineLLM, OpenAILLM
 from .media import OfflineImages, OfflineVideo, OpenAIImages, RunwayVideo
 from .tts import BlipTTS, ElevenLabsTTS, OpenAITTS
 
 # Order matters for "auto": the first configured, non-offline provider wins.
 REGISTRY: dict[str, list[Provider]] = {
-    "llm": [AnthropicLLM(), OpenAILLM(), OfflineLLM()],
+    "llm": [AnthropicLLM(), OpenAILLM(), CompatibleLLM(), OfflineLLM()],
     "tts": [ElevenLabsTTS(), OpenAITTS(), BlipTTS()],
     "image": [OpenAIImages(), OfflineImages()],
     "video": [RunwayVideo(), OfflineVideo()],

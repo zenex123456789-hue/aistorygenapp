@@ -22,9 +22,11 @@ export function render(root) {
       h("b", "Shared keys are in use: "), caps.shared_keys.map((k) => NAMES[k] || k).join(", "), ". They came built into this app from whoever made it, and what you generate is billed to their account, so keep it to what you need. To use your own key instead, add it to ",
       h("code", caps.env_file || ".env"), " and restart the app; your key takes priority.")));
   }
+  const free = [h("b", "Don't want to pay? "), "Under Story writer, \"Free / local AI\" works with Google Gemini's free tier or Ollama on your own computer: add ", h("code", "OPENAI_COMPAT_BASE_URL"), " and ", h("code", "OPENAI_COMPAT_MODEL"),
+    " (and ", h("code", "OPENAI_COMPAT_API_KEY"), " for Gemini). The README has the exact lines."];
   root.append(h("div", { class: "notice", style: { marginBottom: "16px" } }, icon("check", 18), caps.env_file
-    ? h("div", h("b", "How to connect your own provider: "), "open ", h("code", caps.env_file), " in Notepad (create it if it is missing), add a line such as ", h("code", "ANTHROPIC_API_KEY=your-key"), ", save, then restart the app. The status below turns green when the key is detected.")
-    : h("div", h("b", "How to connect a provider: "), "copy ", h("code", ".env.example"), " to ", h("code", ".env"), ", paste the key next to its name, then restart ", h("code", "python run.py"), ". The status below turns green when the key is detected.")));
+    ? h("div", h("b", "How to connect your own provider: "), "open ", h("code", caps.env_file), " in Notepad (create it if it is missing), add a line such as ", h("code", "ANTHROPIC_API_KEY=your-key"), ", save, then restart the app. The status below turns green when the key is detected. ", ...free)
+    : h("div", h("b", "How to connect a provider: "), "copy ", h("code", ".env.example"), " to ", h("code", ".env"), ", paste the key next to its name, then restart ", h("code", "python run.py"), ". The status below turns green when the key is detected. ", ...free)));
 
   const THEMES = [["system", "monitor", "Match system"], ["light", "sun", "Light"], ["dark", "moon", "Dark"]];
   root.append(h("div", { class: "card", style: { marginBottom: "16px" } },

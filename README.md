@@ -90,10 +90,36 @@ never sent to the browser. **Settings** in the dashboard shows which keys were d
 | You want | Set | Notes |
 |---|---|---|
 | Better stories, scripts, viral critique, reference vision analysis | `ANTHROPIC_API_KEY` **or** `OPENAI_API_KEY` | Anthropic is used first if both exist. Models: `ANTHROPIC_MODEL`, `OPENAI_MODEL` |
+| The same, **without paying** | `OPENAI_COMPAT_BASE_URL` + `OPENAI_COMPAT_MODEL` (+ `OPENAI_COMPAT_API_KEY`) | Google Gemini's free tier or Ollama on your own PC, see [below](#a-free-writer-no-claude-or-openai-bill) |
 | Human-sounding voices, many accents, exact caption timing | `ELEVENLABS_API_KEY` | Word timestamps come from ElevenLabs |
 | Human-sounding voices (alternative) | `OPENAI_API_KEY` | Accent/emotion are steered by instructions. Caption timing is *estimated* and flagged |
 | AI keyframe images per scene | `OPENAI_API_KEY` | Video Renderer → Visual mode → "AI keyframe images" |
 | AI video clips per scene | `RUNWAY_API_KEY` (+ `OPENAI_API_KEY` for the keyframes it animates) | Video Renderer → Visual mode → "AI video clips". Runway clips are 5 or 10 s |
+
+### A free writer (no Claude or OpenAI bill)
+
+The **Write story from my prompt** button and the story writing itself can use any service that speaks the OpenAI chat format, including free ones. In Settings it is the **Free / local AI** row under *Story writer*. Add the lines for one of these to your `.env`, restart the app, then press *Test* in Settings.
+
+**Google Gemini (free tier, easiest, works on the hosted version too).** Make a key at <https://aistudio.google.com/apikey>, open the AI Studio model list and copy the name of a Gemini *Flash* model, then:
+
+```
+OPENAI_COMPAT_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+OPENAI_COMPAT_MODEL=the-model-name-you-copied
+OPENAI_COMPAT_API_KEY=your-gemini-key
+```
+
+Google limits how much the free tier can be used per minute and per day, and says free-tier content may be used to improve its products, so do not put anything private in your prompts.
+
+**Ollama (free, private, on your own computer).** Install it from <https://ollama.com>, run `ollama pull <model>` once for a model your PC can handle, keep Ollama running, then:
+
+```
+OPENAI_COMPAT_BASE_URL=http://localhost:11434/v1
+OPENAI_COMPAT_MODEL=the-model-you-pulled
+```
+
+No key is needed. It only reaches the app on that same computer, so a hosted server cannot use your PC's Ollama.
+
+Other OpenAI-style services (Groq, OpenRouter, LM Studio...) work the same way. Honest limits: small or free models write simpler stories than Claude, can be slower, and now and then break the JSON format the app needs (the app asks the model once to fix it, and otherwise says it failed instead of making something up). If both a paid key and this are set, the paid one is used unless you pick *Free / local AI* from the Story writer list in Settings. This adapter was tested against a local stand-in server, not against Gemini or Ollama themselves.
 
 A sensible first setup: **one LLM key + one voice key** (for example `ANTHROPIC_API_KEY` + `ELEVENLABS_API_KEY`). You do
 not need an AI video provider: the built-in renderer animates the characters itself.
@@ -237,7 +263,7 @@ download, rename and delete everything.
 * **Offline writer** is a combinatorial template engine: it produces valid, structured stories but they are plainer
   than an LLM's. Quality scales with the LLM you connect.
 * **Visuals** are drawn by the app's own renderer (no copyrighted characters or assets). The default is a Roblox-*inspired* blocky look; the **Art style** picker on the Story page also offers Round cartoon, Pixel art, Comic book, Ink sketch and Stick figures, and Anime or Realistic when an AI image provider (OpenAI key, Visual mode "AI keyframe images") is connected. Without one, those two fall back to the Round cartoon look and the project lists a warning.
-* **Write story from my prompt:** type what you want (as long and detailed as you like) and press this button. The AI reads it as a brief, invents the story, and sets genre, tone, characters and art style if you asked for them. It needs Claude connected (`ANTHROPIC_API_KEY`); without a key it tells you so rather than echoing your words.
+* **Write story from my prompt:** type what you want (as long and detailed as you like) and press this button. The AI reads it as a brief, invents the story, and sets genre, tone, characters and art style if you asked for them. It needs an AI writer connected (Claude, OpenAI, or the [free option](#a-free-writer-no-claude-or-openai-bill)); without one it tells you so rather than echoing your words.
   It is not photoreal or generative video. AI keyframes/clips are optional and only used when you choose them.
 * **Never faked:** if an AI provider fails and *Settings → fall back to the built-in renderer* is off, the render fails
   with the error. If it is on, every fallback is listed per scene in the render report and as a warning.

@@ -132,8 +132,8 @@ export function render(root) {
 
   root.append(h("div", { class: "card hero" },
     llm.offline ? h("div", { class: "notice warn", style: { marginBottom: "14px" } }, icon("alert", 18),
-      h("div", h("b", "Claude is not connected, so no AI is writing your story. "), "The built-in generator can only slot the words you type into a template, which is why your idea comes back almost as you typed it. ",
-        "Add your Claude key (see Settings) and restart the app to get a story actually written from your idea.")) : null,
+      h("div", h("b", "No AI writer is connected, so no AI is writing your story. "), "The built-in generator can only slot the words you type into a template, which is why your idea comes back almost as you typed it. ",
+        "Connect Claude, or a free AI such as Google Gemini or Ollama (see Settings), and restart the app to get a story actually written from your idea.")) : null,
     field("Your story idea or prompt", idea),
     h("div", { class: "grid g4", style: { marginTop: "14px" } },
       field("Genre", select(E.genres, o.genre, set("genre"))),

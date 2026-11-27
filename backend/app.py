@@ -451,9 +451,9 @@ def story_from_prompt():
     opts = S.normalize_options(b.get("options"))
     llm = providers.llm()
     if llm.offline:
-        return jsonify({"error": "Claude is not connected, so there is nothing that can write a story from your prompt. The built-in "
-                                 "generator only rearranges the words you typed into a template. Add your Claude key (Settings shows how), "
-                                 "restart the app, and try again.", "code": "no_ai"}), 409
+        return jsonify({"error": "No AI writer is connected, so there is nothing that can write a story from your prompt. The built-in "
+                                 "generator only rearranges the words you typed into a template. Connect Claude, or a free AI such as Google Gemini "
+                                 "or Ollama (Settings shows how), restart the app, and try again.", "code": "no_ai"}), 409
     style = db.get_style(opts.get("style_id"))
     try:
         res = llm_engine.from_prompt(llm, prompt, opts, style, db.recent_premises(20))

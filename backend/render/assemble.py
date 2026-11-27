@@ -104,7 +104,9 @@ def final_assemble(segments: list[Path], timeline: dict, scenes: list[dict], aud
     else:
         parts.append(f"[{vlabel}]null[vout]")
         vlabel = "vout"
-    parts.append(f"[{n}:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[aout]")
+    # The mixed track is a plain mono WAV with no channel-layout tag. FFmpeg 5.x (Debian/Ubuntu servers) cannot carry that through
+    # loudnorm into the AAC encoder, so state the layout (stereo, what social platforms expect) before and after the normaliser.
+    parts.append(f"[{n}:a]aformat=channel_layouts=stereo,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,aformat=channel_layouts=stereo[aout]")
     cmd = [config.FFMPEG, "-y", "-loglevel", "error", *inputs, "-filter_complex", ";".join(parts),
            "-map", f"[{vlabel}]", "-map", "[aout]", "-t", f"{timeline['total']:.3f}", "-r", str(fps),
            "-c:v", "libx264", "-preset", q["fpreset"], "-crf", str(q["fcrf"]), "-pix_fmt", "yuv420p",

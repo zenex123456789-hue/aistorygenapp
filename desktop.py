@@ -146,6 +146,7 @@ def show_window(url: str, home: Path) -> None:
         import webview
         try:
             webview.settings["ALLOW_DOWNLOADS"] = True      # lets "Download" buttons save the MP4
+            webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
         except Exception:  # noqa: BLE001
             pass
         webview.create_window("AI Story Factory", url, width=1280, height=860, min_size=(480, 640))

@@ -70,6 +70,7 @@ It refuses to start on a reachable address without access codes.
 * **What the installer contains:** Python, the app and FFmpeg. It installs for your user only (no admin password) and opens in its own window.
   If Windows' built-in web view (WebView2) isn't available, the app opens in your default browser instead.
 * **Where files go:** program in `%LOCALAPPDATA%\Programs\AI Story Factory`, your projects, videos and log in `%LOCALAPPDATA%\AIStoryFactory`.
+* **Updates:** the **New Updates** button (left menu) and the **Releases** button (bottom of Settings) open the page where new installers are published. **New Updates** compares your version with the newest release and gives you the download button when there is one. While the repository is private, the app cannot look inside it, so it will say so and send you to the Releases page to compare versions yourself (make the repository public, or put a read-only token in `.env` as `SF_UPDATE_TOKEN`, to get the automatic check). Run the new installer over the old one; projects live in a separate folder. The check only asks GitHub for the newest release, only when you press the button.
 * **Adding API keys:** create `%LOCALAPPDATA%\AIStoryFactory\.env` (same lines as `.env.example`), then close and reopen the app. Keys built into the installer are described in [Shared keys](#shared-keys-for-a-private-group); yours take priority.
 * **Uninstall:** Windows Settings → Apps → AI Story Factory. Your projects stay until you delete the `AIStoryFactory` folder yourself.
 * **How the installer is made:** publishing a release with a tag like `v1.0.0` runs **Actions → Windows installer**, which builds it and attaches
@@ -247,6 +248,8 @@ tools/                     make_codes.py (personal codes), smoke_test.py (check 
 .github/workflows/         cloud builds: Windows installer, Android APK, server image check
 backend/app.py             Flask JSON API + static files
 backend/auth.py            access codes, daily run cap, request checks for the hosted version
+backend/version.py         the app version (keep equal to installer/AIStoryFactory.iss and the release tag)
+backend/updates.py         the New Updates check against GitHub Releases
 backend/pipeline.py        stage orchestration (pause, resume, stale tracking)
 backend/jobs.py            background jobs + progress + cancel
 backend/providers/         LLM / TTS / image / video provider interfaces + adapters

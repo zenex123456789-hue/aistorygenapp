@@ -12,7 +12,8 @@ from pathlib import Path
 from flask import Flask, abort, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 
-from . import audio_util, auth, config, db, jobs, pipeline, providers
+from . import audio_util, auth, config, db, jobs, pipeline, providers, updates
+from .version import VERSION
 from .engines import offline, references, schemas as S, llm_engine
 from .engines import voices as voice_engine
 from .providers.base import ProviderError
@@ -72,12 +73,31 @@ def health():
                     "video": {"width": config.WIDTH, "height": config.HEIGHT}})
 
 
+@app.get("/api/update-check")
+def update_check():
+    return jsonify(updates.check())
+
+
+@app.post("/api/open-external")
+def open_external():
+    """Desktop app only: open a page of this project's GitHub repository in the person's normal browser."""
+    url = str((request.get_json(silent=True) or {}).get("url", ""))
+    if config.HOSTED or auth.enabled() or request.remote_addr not in ("127.0.0.1", "::1"):
+        return err("Not available here.", 403)
+    if not updates.allowed_link(url):
+        return err("That address is not allowed.", 400)
+    import webbrowser
+    webbrowser.open(url)
+    return jsonify({"ok": True})
+
+
 @app.get("/api/capabilities")
 def capabilities():
     caps = providers.capabilities()
     shared = [k for k in os.environ.get("SF_SHARED_KEYS", "").split(",") if k]     # names only, never values
     return jsonify({"providers": caps, "ffmpeg": audio_util.ffmpeg_ok(), "settings": db.get_settings(),
                     "shared_keys": shared, "env_file": os.environ.get("SF_ENV_FILE", ""), "auth": auth.status(),
+                    "version": VERSION, "releases_url": updates.RELEASES_URL,
                     "enums": {"genres": S.GENRES, "tones": S.TONES, "audiences": S.AUDIENCES, "lengths": list(S.LENGTHS), "durations": S.DURATIONS,
                               "location_kinds": S.LOCATION_KINDS, "emotions": S.EMOTIONS, "deliveries": S.DELIVERIES, "animations": S.ANIMATIONS,
                               "forms": S.FORMS, "effects": S.EFFECTS, "camera_shots": S.CAMERA_SHOTS, "camera_moves": S.CAMERA_MOVES,

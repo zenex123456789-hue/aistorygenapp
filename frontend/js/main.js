@@ -11,6 +11,7 @@ import * as render from "./pages/render.js";
 import * as files from "./pages/files.js";
 import * as settings from "./pages/settings.js";
 import { applyTheme, setTheme, resolved } from "./theme.js";
+import { showUpdates } from "./updates.js";
 
 const PAGES = [
   { id: "references", label: "References", icon: "image", mod: references, stages: [] },
@@ -39,7 +40,8 @@ function aggregate(stages) {
 function renderNav() {
   const nav = document.getElementById("nav");
   nav.replaceChildren(...PAGES.map((p) => h("a", { class: S.page === p.id ? "active" : "", href: "#/" + p.id, title: p.label },
-    icon(p.icon), h("span", p.label), p.stages.length ? h("i", { class: "dot " + aggregate(p.stages) }) : null)));
+    icon(p.icon), h("span", p.label), p.stages.length ? h("i", { class: "dot " + aggregate(p.stages) }) : null)),
+    h("button", { class: "navbtn", title: "Check for a newer version of the app", onclick: () => showUpdates() }, icon("download"), h("span", "New Updates")));
   const caps = S.caps;
   if (caps) {
     const act = (k) => caps.providers[k].providers.find((x) => x.active);

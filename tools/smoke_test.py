@@ -78,6 +78,8 @@ def main(argv: list[str]) -> int:
     llm = next((p for p in caps["providers"]["llm"]["providers"] if p["active"]), {})
     tts = next((p for p in caps["providers"]["tts"]["providers"] if p["active"]), {})
     print(f"INFO  writer: {llm.get('label')}   voices: {tts.get('label')}")
+    s, upd = me.json("GET", "/api/update-check")
+    check("the update check answers (needs no internet to do so)", s == 200 and bool(upd.get("current")) and bool(upd.get("status")), f"{s} {upd}")
     s, page, _, _ = me.req("GET", "/")
     check("the home page opens when signed in", s == 200 and b"Story Factory" in page, str(s))
 

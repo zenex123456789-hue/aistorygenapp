@@ -3,7 +3,7 @@
 Each release's notes are shown inside the app (Settings → Releases). Add a section here for every new release, newest first, and paste the same text into the
 release description on GitHub; the app prefers the GitHub text and falls back to this file.
 
-## Unreleased
+## v0.2.5 - 2026-11-27
 
 - **Free / local AI writer:** the story writer, and the "Write story from my prompt" button, can now run on Google Gemini's free tier or on Ollama on your own computer instead of a paid Claude or OpenAI key (Settings → Story writer → "Free / local AI"; the README has the exact lines). Small free models write simpler stories and can be slower; if one fails the app says so instead of making something up.
 - **Releases / New Updates:** a release whose installers are still being built now says so ("being built right now, about 10 minutes") instead of "no files attached", and a **Refresh** button checks again without closing the window.

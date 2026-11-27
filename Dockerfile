@@ -20,6 +20,9 @@ RUN useradd --system --uid 10001 --home-dir /app app \
 
 # SF_HOSTED=1: refuse to start unless SF_ACCESS_CODES is set. SF_TRUST_PROXY=1: the host's HTTPS proxy sits in front.
 ENV SF_HOSTED=1 SF_TRUST_PROXY=1 SF_DATA_DIR=/data PORT=8000
+# The entrypoint starts as root (to fix volume ownership) and then drops to "app"; give that user a writable home and
+# cache, or FFmpeg's caption renderer (fontconfig) fails with "No writable cache directories".
+ENV HOME=/app XDG_CACHE_HOME=/tmp/cache
 VOLUME ["/data"]
 EXPOSE 8000
 

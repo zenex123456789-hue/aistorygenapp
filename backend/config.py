@@ -50,6 +50,8 @@ FFPROBE = os.getenv("FFPROBE_BIN", "ffprobe")
 
 HOST = os.getenv("SF_HOST", "127.0.0.1")
 PORT = int(os.getenv("SF_PORT", "8000"))
+# Hosted (shared) deployment: the container sets SF_HOSTED=1, and the app then refuses to start without access codes.
+HOSTED = os.getenv("SF_HOSTED", "").strip().lower() in ("1", "true", "yes")
 
 # Video constants (the product spec: vertical 9:16, 1080x1920)
 WIDTH, HEIGHT = 1080, 1920

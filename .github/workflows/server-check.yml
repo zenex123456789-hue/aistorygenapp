@@ -1,0 +1,70 @@
+name: Server image check
+
+# Builds the hosting image and tests it like a real deployment: FFmpeg has what the renderer needs, it refuses to start
+# without access codes, a root-owned data volume works, login protects everything, and a video really renders.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - docker-entrypoint.sh
+      - docker-compose.yml
+      - Caddyfile
+      - requirements.txt
+      - backend/**
+      - frontend/**
+      - tools/**
+      - .github/workflows/server-check.yml
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t sf-test .
+
+      - name: FFmpeg has libx264 and libass
+        run: |
+          docker run --rm --entrypoint ffmpeg sf-test -hide_banner -encoders | grep libx264
+          docker run --rm --entrypoint ffmpeg sf-test -hide_banner -filters | grep -w subtitles
+
+      - name: Refuses to start without access codes
+        run: |
+          set +e
+          docker run --rm -e PORT=8000 sf-test > out.txt 2>&1
+          code=$?
+          cat out.txt
+          if [ "$code" = "0" ]; then echo "container started without access codes!"; exit 1; fi
+          grep -q "SF_ACCESS_CODES" out.txt
+
+      - name: Compose file is valid
+        run: SITE_ADDRESS=story.example.com docker compose config > /dev/null
+
+      - name: Run it with a root-owned data volume
+        run: |
+          docker volume create sfdata
+          docker run --rm -v sfdata:/data alpine sh -c "chown 0:0 /data && ls -ld /data"
+          docker run -d --name sf -p 8000:8000 -v sfdata:/data \
+            -e SF_ACCESS_CODES="alice:Kd83hq2LzPwx" -e SF_DAILY_RUNS=5 sf-test
+          for i in $(seq 1 40); do curl -fs http://127.0.0.1:8000/healthz && break || sleep 2; done
+          curl -fs http://127.0.0.1:8000/healthz
+          docker exec sf id
+          docker exec sf stat -c "data dir owner: %u" /data
+
+      - name: Smoke test (login, protection, real render)
+        run: python3 tools/smoke_test.py http://127.0.0.1:8000 Kd83hq2LzPwx --render
+
+      - name: Data survives a restart
+        run: |
+          docker restart sf
+          for i in $(seq 1 40); do curl -fs http://127.0.0.1:8000/healthz && break || sleep 2; done
+          docker exec sf test -f /data/storyfactory.db
+          # the project made by the smoke test was deleted; make sure the database still opens and answers
+          docker exec sf python -c "import sqlite3; sqlite3.connect('/data/storyfactory.db').execute('select count(*) from jobs')"
+
+      - name: Container log (on failure)
+        if: failure()
+        run: docker logs sf || true

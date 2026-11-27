@@ -1,0 +1,31 @@
+# For your own server (a rented Linux machine). Starts the app plus Caddy, which gets a free HTTPS certificate for your domain.
+# Put your settings in a file called  .env  next to this one (copy host.env.example), then:   docker compose up -d --build
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "8000"
+    volumes:
+      - sf-data:/data
+    expose:
+      - "8000"
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env, for example story.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+volumes:
+  sf-data:
+  caddy-data:
+  caddy-config:

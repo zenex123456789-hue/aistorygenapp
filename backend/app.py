@@ -12,13 +12,18 @@ from pathlib import Path
 from flask import Flask, abort, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 
-from . import audio_util, config, db, jobs, pipeline, providers
+from . import audio_util, auth, config, db, jobs, pipeline, providers
 from .engines import offline, references, schemas as S, llm_engine
 from .engines import voices as voice_engine
 from .providers.base import ProviderError
 
 app = Flask(__name__, static_folder=None)
 app.config["MAX_CONTENT_LENGTH"] = 800 * 1024 * 1024
+if os.getenv("SF_TRUST_PROXY", "").strip().lower() in ("1", "true", "yes"):
+    # Behind a hosting platform's HTTPS proxy: believe its X-Forwarded-* headers (real client address, https, host name).
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+auth.init(app, config.HOSTED)
 db.init()
 jobs.recover_interrupted()
 
@@ -72,7 +77,7 @@ def capabilities():
     caps = providers.capabilities()
     shared = [k for k in os.environ.get("SF_SHARED_KEYS", "").split(",") if k]     # names only, never values
     return jsonify({"providers": caps, "ffmpeg": audio_util.ffmpeg_ok(), "settings": db.get_settings(),
-                    "shared_keys": shared, "env_file": os.environ.get("SF_ENV_FILE", ""),
+                    "shared_keys": shared, "env_file": os.environ.get("SF_ENV_FILE", ""), "auth": auth.status(),
                     "enums": {"genres": S.GENRES, "tones": S.TONES, "audiences": S.AUDIENCES, "lengths": list(S.LENGTHS), "durations": S.DURATIONS,
                               "location_kinds": S.LOCATION_KINDS, "emotions": S.EMOTIONS, "deliveries": S.DELIVERIES, "animations": S.ANIMATIONS,
                               "forms": S.FORMS, "effects": S.EFFECTS, "camera_shots": S.CAMERA_SHOTS, "camera_moves": S.CAMERA_MOVES,

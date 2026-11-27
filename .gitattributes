@@ -3,3 +3,4 @@
 *.ttf binary
 *.png binary
 *.ico binary
+Dockerfile text eol=lf

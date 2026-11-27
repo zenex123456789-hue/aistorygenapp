@@ -31,6 +31,14 @@ export function render(root) {
     h("div", { class: "seg", role: "group", "aria-label": "Theme" }, THEMES.map(([id, ic, label]) =>
       h("button", { class: getMode() === id ? "on" : "", "aria-pressed": getMode() === id ? "true" : "false", onclick: async () => { await setTheme(id); window.__rerender(); } }, icon(ic, 15), label)))));
 
+  if (caps.auth && caps.auth.enabled) {
+    const a = caps.auth;
+    root.append(h("div", { class: "card", style: { marginBottom: "16px" } },
+      h("div", { class: "card-head" }, h("div", { class: "grow" }, h("h3", "Account"),
+        h("div", { class: "small muted" }, `Signed in as ${a.user || "?"}. ` + (a.run_limit ? `${a.runs_today} of ${a.run_limit} video runs used today (resets at midnight UTC).` : "No daily run limit.") + " Everyone shares the same projects.")),
+        h("button", { class: "btn", onclick: async () => { try { await post("/api/logout"); } catch (e) { /* signing out anyway */ } location.href = "/login"; } }, "Sign out"))));
+  }
+
   KINDS.forEach(([kind, label, sub]) => {
     const group = caps.providers[kind];
     const key = kind + "_provider";

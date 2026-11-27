@@ -3,7 +3,7 @@
 Each release's notes are shown inside the app (Settings → Releases). Add a section here for every new release, newest first, and paste the same text into the
 release description on GitHub; the app prefers the GitHub text and falls back to this file.
 
-## Unreleased
+## v0.2.3 - 2026-11-27
 
 - **Write story from my prompt:** a new button next to GENERATE STORY. The AI reads what you typed as a brief and invents a story from it (new title, characters, twist and ending), and fills in the settings your prompt asked for (genre, tone, number of characters, art style...). It needs Claude to be connected: without it the app now says so instead of handing your own words back, and a warning on the Story page explains why the built-in generator only echoes your idea.
 - **Art styles:** the video no longer has to look like Roblox. Pick Blocky 3D, Round cartoon, Pixel art, Comic book, Ink sketch or Stick figures (hand-drawn stick people on notebook paper; all drawn by the built-in renderer, with a preview of each), or Anime / Realistic if you have an AI image provider (OpenAI key). Without one, those two are drawn in the Round cartoon look and the project says so.

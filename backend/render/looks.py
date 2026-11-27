@@ -29,6 +29,7 @@ class Look:
     head: float = 1.0                 # head size multiplier
     eyes: float = 1.0                 # eye size multiplier
     sparkle_eyes: bool = False        # white highlight in the eyes
+    stick: bool = False               # draw characters as stick figures (rig.py)
     writer: str = ""                  # how the story writer is told to picture it
     prompt: str = ""                  # how an image model is told to draw it
     tags: tuple = ()                  # hashtags that fit this look
@@ -92,7 +93,7 @@ def _paper(h: int, w: int) -> np.ndarray:
     return _pattern_cache[key]
 
 
-def _sketch(img: np.ndarray, t: float) -> np.ndarray:
+def _sketch(img: np.ndarray, t: float, colour: float = 0.72, lift: float = 0.0) -> np.ndarray:
     h, w = img.shape[:2]
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(255 - gray, (0, 0), max(2.0, w / 110))
@@ -100,11 +101,18 @@ def _sketch(img: np.ndarray, t: float) -> np.ndarray:
     line = np.clip((line.astype(np.float32) / 255.0) ** 1.8, 0, 1)
     k = int(t * 8) % 3 - 1                                             # lines wobble slightly, like a hand-drawn boil
     line = np.roll(line, (k, -k), axis=(0, 1))
-    wash = cv2.addWeighted(img, 0.72, np.full_like(img, 255), 0.28, 0).astype(np.float32) / 255.0   # watercolour wash
+    wash = cv2.addWeighted(img, colour, np.full_like(img, 255), 1 - colour, 0).astype(np.float32) / 255.0   # watercolour wash
     g3 = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR).astype(np.float32) / 255.0
     wash = wash * 0.85 + (0.55 + 0.45 * g3) * 0.15
     out = wash * line[:, :, None] * _paper(h, w)
+    if lift:
+        out = out + (1.0 - out) * lift                                 # brighter, whiter page
     return np.clip(out * 255.0, 0, 255).astype(np.uint8)
+
+
+def _doodle(img: np.ndarray, t: float) -> np.ndarray:
+    """Notebook-page doodle: the sketch filter with only a faint colour wash."""
+    return _sketch(img, t, 0.5, 0.2)
 
 
 def _cartoon(img: np.ndarray, t: float) -> np.ndarray:
@@ -138,6 +146,10 @@ LOOKS: dict[str, Look] = {l.id: l for l in [
          radius=1.3, outline=0.9, head=1.05, filter=_sketch,
          writer="hand-drawn ink-and-watercolour storyboard", tags=("#sketch", "#handdrawn"),
          prompt="a hand-drawn ink and watercolour storyboard look: loose pencil outlines on warm paper"),
+    Look("stick", "Stick figures", "Everyone becomes a stick figure doodled on notebook paper. Faces, hair, hats and animal forms still show.",
+         outline=1.0, filter=_doodle, stick=True,
+         writer="hand-drawn stick-figure doodle", tags=("#stickfigure", "#stickman", "#doodle"),
+         prompt="a hand-drawn stick-figure animation on notebook paper: simple stick people with round heads, thin pencil lines, doodle backgrounds"),
     Look("anime", "Anime (needs AI images)", "Cel-shaded anime pictures. Made by an AI image provider, so it needs an OpenAI key.",
          procedural=False, fallback="cartoon", writer="anime-style animated", tags=("#anime",),
          prompt="an anime style animated short: cel-shaded characters, big expressive eyes, clean line art, painted backgrounds"),

@@ -41,7 +41,10 @@ jobs:
           grep -q "SF_ACCESS_CODES" out.txt
 
       - name: Compose file is valid
-        run: SITE_ADDRESS=story.example.com docker compose config > /dev/null
+        run: |
+          cp host.env.example .env
+          SITE_ADDRESS=story.example.com docker compose config > /dev/null
+          rm .env
 
       - name: Run it with a root-owned data volume
         run: |

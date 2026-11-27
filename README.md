@@ -16,8 +16,9 @@ characters, scenes, voiceovers, captions, sound effects and music, plus titles, 
 2. Windows may show **"Windows protected your PC"** because the installer isn't code-signed. Click **More info → Run anyway**.
 3. Open **AI Story Factory** from the desktop or Start menu, type an idea and press **GENERATE STORY**.
 
-**Android and iPhone/iPad:** there is no phone download yet. The video engine (Python + FFmpeg) cannot run on a phone, so a phone app would have to talk to a copy of
-this app running on a computer or server. See [Phones](#phones-android-and-ios) for the options.
+**On a phone or tablet (Android, iPhone, iPad):** open your group's address in the browser and sign in with your personal code, then install it to your home screen.
+This needs the app to be [hosted for your group](#host-it-for-your-group-phones-and-any-browser); the video engine cannot run on a phone itself.
+Steps for [iPhone/iPad and Android](#install-on-a-phone) are below.
 
 All versions are on the [Releases page](https://github.com/zenex123456789-hue/aistorygenapp/releases). Without any API keys it runs on built-in offline engines
 (basic writing, beep-style placeholder voices); add keys to unlock real AI, see [API keys](#api-keys-which-ones-and-what-they-unlock).
@@ -27,8 +28,8 @@ All versions are on the [Releases page](https://github.com/zenex123456789-hue/ai
 * **Early release (v0.1.0).** The installer builds automatically and passes a start-up self-test, but it is new. If something breaks,
   open an Issue and attach `%LOCALAPPDATA%\AIStoryFactory\app.log` (see [Troubleshooting](#troubleshooting)).
 * **Dark mode:** **Settings → Appearance** has *Light*, *Dark* and *Match system*, and the sun/moon button at the top right flips between light and dark. The choice is remembered.
-* **Shared keys (optional, for a private group):** a build can carry the maker's Anthropic and ElevenLabs keys so friends do not need their own. Read
-  [Shared keys for a private group](#shared-keys-for-a-private-group) before turning this on: whoever has the installer can extract those keys.
+* **Sharing with friends:** the safest way is to [host it for your group](#host-it-for-your-group-phones-and-any-browser): your API keys stay on the server and nobody can extract them.
+  The Windows installer can also carry your keys ([Shared keys](#shared-keys-for-a-private-group-windows-installer)), but then anyone who has the installer can read them.
 * **Needs:** Windows 10 or 11 (64-bit). The installer is about 137 MB. Internet is only needed for the AI providers you connect; the built-in engines work offline.
 * **Out of the box it is a basic version.** With no API keys you get the built-in template writer and *beep-style placeholder voices* (not real speech).
   For better writing and real voices add keys, see [API keys](#api-keys-which-ones-and-what-they-unlock).
@@ -36,7 +37,8 @@ All versions are on the [Releases page](https://github.com/zenex123456789-hue/ai
   browser or sent anywhere except to the provider they belong to. Updating or uninstalling does not delete your projects.
 * **Windows security warnings.** The installer is not code-signed, so SmartScreen shows "Windows protected your PC" (More info → Run anyway), and some antivirus tools
   may flag unsigned apps built this way. The installer is built from the source in this repo by GitHub Actions; you can read and rebuild it yourself.
-* **One user, no accounts.** Everyone who installs it has their own separate projects. Do not expose it to the internet.
+* **The Windows app is single-user.** Everyone who installs it has their own separate projects on their own PC. Do not put it on the internet yourself;
+  to share one copy with friends use the hosted version, which has a login.
 * **Vendor connections are not fully proven.** The Anthropic, OpenAI, ElevenLabs and Runway adapters were tested against a mock server only, not the live services.
   Errors are shown verbatim. Details in [What is real, what is a stand-in](#what-is-real-what-is-a-stand-in-please-read).
 * **The viral score is an estimate** of story craft. Nothing can predict or guarantee views.
@@ -59,6 +61,9 @@ python run.py               # open http://127.0.0.1:8000
 With **no keys at all** the whole pipeline still runs on built-in offline engines, so you can try everything
 immediately. Those engines are clearly labelled and are lower quality than real AI providers (see "What is real,
 what is a stand-in").
+
+To let other devices on your network use it, set `SF_HOST=0.0.0.0` **and** `SF_ACCESS_CODES` (see [Host it for your group](#host-it-for-your-group-phones-and-any-browser)).
+It refuses to start on a reachable address without access codes.
 
 ## Windows app details
 
@@ -87,7 +92,9 @@ never sent to the browser. **Settings** in the dashboard shows which keys were d
 A sensible first setup: **one LLM key + one voice key** (for example `ANTHROPIC_API_KEY` + `ELEVENLABS_API_KEY`). You do
 not need an AI video provider: the built-in renderer animates the characters itself.
 
-## Shared keys for a private group
+## Shared keys for a private group (Windows installer)
+
+**Prefer the [hosted version](#host-it-for-your-group-phones-and-any-browser) if your friends can use a web address:** there the keys never leave the server. This section is for when everyone must use the installed Windows app.
 
 You can make the installer carry **your** Anthropic and ElevenLabs keys, so everyone in your group gets real AI without setting anything up.
 
@@ -109,17 +116,71 @@ Claude's API is a separate, pay-as-you-go product. You create an API key at <htt
 * **Their own key wins.** If someone puts a key in `%LOCALAPPDATA%\AIStoryFactory\.env`, that is used instead of the shared one.
 * **A safer design for a bigger group** is a small server that holds the keys and checks who is calling, so no key ever leaves it. That is a different (hosted) setup; it is not what this installer does.
 
-## Phones (Android and iOS)
+## Host it for your group (phones and any browser)
 
-There is no Android or iOS download, and it would not be honest to make one that pretends to work: the app renders video with FFmpeg and OpenCV on a computer, which phones cannot run. The workable designs all need a copy of this app running somewhere:
+Run one copy of the app on a server. Everyone opens the same `https://` address on any device, signs in with **their own personal code**, and makes videos together.
 
-| Option | What your friends do | What it needs |
+* **Your API keys stay on the server.** Friends can use them through the app but cannot read them (unlike the installer option).
+* **One code per person.** Remove or change one code and only that person is locked out.
+* **A daily limit per person** (default 20 video runs a day, `SF_DAILY_RUNS`) so one friend cannot burn through your credit. Your Anthropic and ElevenLabs spend limits are still the real safety net.
+* **Everyone shares the same projects and files.** It is a login for people you know, not separate accounts. Do not hand out codes to strangers.
+* **Works on** iPhone, iPad, Android and any computer. There is no App Store or Play Store listing; see [Install on a phone](#install-on-a-phone).
+
+### What it needs and costs
+
+One video render uses about **1.5 GB of memory at its peak**. I measured that with the built-in offline engines on a 2-vCPU test machine (a 30-second video took about 40 seconds). Only one heavy render runs at a time and the rest wait their turn, so
+**pick a server with at least 2 GB of RAM (4 GB is comfortable).** Free hosting tiers with 512 MB will not work. Each project takes roughly 35-50 MB of disk, so delete old projects now and then.
+
+| Where | Roughly | Notes |
 |---|---|---|
-| **Run it on a PC and open it on the phone** | Open `http://<that PC's address>:8000` in the phone's browser on the same Wi-Fi | Run [from source](#run-from-source-developers) with `SF_HOST=0.0.0.0` (the installed app only listens on the PC itself). Your PC stays on; there is no sign-in, so only use a network you trust |
-| **Host it on a server, install as a web app** | Open the link, then *Add to Home Screen* (works on Android and iPhone/iPad) | A small cloud server, a login, and you paying for hosting and AI usage |
-| **Store apps (APK, TestFlight/App Store)** | Install like any app | The hosted server above, plus Android signing, and for iOS an Apple Developer account (US$99/year), a Mac build step and Apple review |
+| **Railway** (easiest) | Hobby plan, then pay for what you use. At the time of writing about US$5 a month minimum, with memory around US$10 per GB-month and CPU around US$20 per vCPU-month, so an app that sits idle is cheap | Connects to your private GitHub repo. Add a volume for your data |
+| **Your own rented server** (cheapest, more technical) | A 2 vCPU / 4 GB cloud server is typically a few euros or dollars a month; prices change often, so check | You need a domain name pointing at it; HTTPS is automatic |
+| Other hosts (Render, Fly.io) | Need a plan with 2 GB+ and a persistent disk | Use the same `Dockerfile`; set the same variables |
 
-None of these are built in this repo yet. The phone-size layout is already there (bottom tab bar, larger touch targets), so a hosted web app is the shortest step.
+AI usage (Anthropic, ElevenLabs) is billed by those companies on top. Check each provider's current pricing before you start.
+
+### Step 1: make personal codes
+
+```bash
+python tools/make_codes.py alice bob carol
+```
+
+It prints one line to paste into the `SF_ACCESS_CODES` setting and a code to send each person privately. Codes need at least 8 characters; the tool makes 14.
+
+### Step 2a: Railway
+
+1. Go to <https://railway.com>, sign in with GitHub, choose **New Project → GitHub repo** and pick this repository. Choose **Add Variables** before the first deploy.
+2. Add these variables (see `host.env.example`):
+   `SF_ACCESS_CODES` (the line from step 1), `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, and optionally `SF_DAILY_RUNS`. Railway builds the `Dockerfile` in this repo.
+3. **Add a volume to the service and set its mount path to `/data`.** Without it, every project and video is deleted each time the service redeploys. (Railway's volumes guide: <https://docs.railway.com/volumes>.)
+4. In the service's settings click **Generate Domain**. That `https://...up.railway.app` address is what you give your group.
+5. In Railway's usage settings set a **hard limit** so a surprise cannot run up a bill (it takes the app offline when reached).
+
+The app refuses to start if `SF_ACCESS_CODES` is missing, so it can never run open to the internet by mistake.
+
+### Step 2b: your own server (Docker)
+
+1. Rent an Ubuntu server (2 vCPU / 4 GB or more) and point a domain name at it (an `A` record to its IP address).
+2. On the server install Docker (`curl -fsSL https://get.docker.com | sh`) and get this code onto it (for a private repo: `git clone` with a read-only personal access token).
+3. `cp host.env.example .env`, fill it in (codes, keys, and `SITE_ADDRESS=your.domain.example`), then run `docker compose up -d --build`. Caddy fetches the HTTPS certificate for you.
+4. To update later: `git pull && docker compose up -d --build`. Your data is in the `sf-data` Docker volume.
+
+### Step 3: check it
+
+```bash
+python tools/smoke_test.py https://your-address your-personal-code --render
+```
+
+It checks that nothing is readable without signing in, that your code works, and that a 10-second video really renders and can be streamed. (If your server has AI keys, `--render` uses a little of your credit.)
+
+**What has been tested:** the Docker image is built and tested by GitHub on every change (**Actions → Server image check**): FFmpeg features, refusing to start without codes, a root-owned data volume, login protection, a real render, a range request on the video, and data surviving a restart. I have **not** deployed it on Railway or a rented server myself, and I have not tried it with real Anthropic or ElevenLabs keys on a server, so expect to read a log or two the first time.
+
+### Install on a phone
+
+* **iPhone / iPad:** open your address in **Safari**, sign in, tap **Share → Add to Home Screen**. It then opens full-screen like an app. There is no App Store version: that would need an Apple Developer account (US$99 a year) and Apple's review. I could not test on an iPhone; if **Download MP4** only plays the video inside the home-screen app, open the address in Safari instead and download from there.
+* **Android, as a web app:** open your address in Chrome, sign in, then menu **⋮ → Install app** (or **Add to Home screen**).
+* **Android, as an APK file:** set a repository variable `SERVER_URL` to your address (**Settings → Secrets and variables → Actions → Variables**), then run **Actions → Android APK → Run workflow** and download `Story-Factory.apk` from the run's **Artifacts**. The file contains only your address, no keys, so you can send it to friends directly. They must allow "install unknown apps", and Google Play Protect may warn because it is not from the Play Store. The APK is signed with a throwaway debug key, so installing a newer one over an older one fails: uninstall the old one first. You only need a new APK if the address changes.
+  The Android build is checked by GitHub for a valid package with internet permission; I have **not** run it on a real phone.
 
 ## How it works
 
@@ -179,8 +240,12 @@ run.py                     start the server (python run.py)
 desktop.py                 the same app in a native window (what the Windows installer runs)
 start-windows.bat          one-click launcher for running from source on Windows
 installer/                 Inno Setup script + icon for the Windows installer
-.github/workflows/         cloud build: Windows installer
+Dockerfile, docker-compose.yml, Caddyfile, railway.json   hosting the app for a group
+android-app/               thin Android wrapper that opens your hosted address (built by Actions)
+tools/                     make_codes.py (personal codes), smoke_test.py (check a hosted server)
+.github/workflows/         cloud builds: Windows installer, Android APK, server image check
 backend/app.py             Flask JSON API + static files
+backend/auth.py            access codes, daily run cap, request checks for the hosted version
 backend/pipeline.py        stage orchestration (pause, resume, stale tracking)
 backend/jobs.py            background jobs + progress + cancel
 backend/providers/         LLM / TTS / image / video provider interfaces + adapters
@@ -208,6 +273,12 @@ Subclass `LLMProvider`, `TTSProvider`, `ImageProvider` or `VideoProvider` in `ba
 * **Provider error in the pipeline bar** – read the message; a 401/403 means a wrong or unauthorised key, 429 means rate
   limit. Use *Retry* after fixing it; finished stages are kept.
 * **Render is slow** – set Quality to *Draft* in Video Renderer while iterating.
+* **Hosted: the container exits at start-up** – read its log. "SF_ACCESS_CODES" means you did not set the codes; a code under 8 characters or two people sharing a code is also refused.
+* **Hosted: projects vanish after a redeploy** – no volume is mounted at `/data`. Add one.
+* **Hosted: it crashes or restarts while rendering** – the server ran out of memory. Use a plan with at least 2 GB (4 GB is safer).
+* **Hosted: "Daily limit reached"** – that person used their runs for today (resets at midnight UTC). Raise `SF_DAILY_RUNS` or set it to 0.
+* **Hosted: "Too many wrong codes"** – wait five minutes; it is a per-address limit.
+* **Hosted: signed out again and again** – someone changed or removed that person's code, or the browser blocks cookies for the site.
 
 ## Licences
 

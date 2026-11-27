@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from .. import config
-from . import rig
+from . import looks, rig
 from .draw import Cam, Canvas, bgr
 from .scene import render_still
 
@@ -24,12 +24,15 @@ def _font(size: int, bold: bool = True):
     return _font_cache[key]
 
 
-def _place(img: np.ndarray, wx: float, wy: float, sx: float, sy: float, zoom: float = 1.0) -> Canvas:
+def _place(img: np.ndarray, wx: float, wy: float, sx: float, sy: float, zoom: float = 1.0, look=None) -> Canvas:
     cam = Cam(zoom, wx - (sx - 540) / zoom, wy - (sy - 960) / zoom)
-    return Canvas(img, cam, 1.0)
+    cv = Canvas(img, cam, 1.0)
+    cv.look = look
+    return cv
 
 
-def character_sheet(ch: dict) -> np.ndarray:
+def character_sheet(ch: dict, look_id: str | None = None) -> np.ndarray:
+    look = looks.drawn(look_id)
     W_, H_ = 1500, 1000
     top, bot = np.array([250, 244, 255], np.float32), np.array([235, 245, 255], np.float32)
     t = np.linspace(0, 1, H_, dtype=np.float32)[:, None, None]
@@ -37,7 +40,7 @@ def character_sheet(ch: dict) -> np.ndarray:
     cv2.rectangle(img, (40, 40), (560, 960), (255, 255, 255), -1, cv2.LINE_AA)
     cv2.rectangle(img, (40, 40), (560, 960), (225, 215, 235), 3, cv2.LINE_AA)
     cv2.ellipse(img, (300, 880), (200, 22), 0, 0, 360, (235, 228, 240), -1, cv2.LINE_AA)
-    cv = _place(img, 0, 0, 300, 880)
+    cv = _place(img, 0, 0, 300, 880, look=look)
     pose = rig.make_pose("idle", 0.0, "neutral", 0.0, 0.0)
     rig.draw_character(cv, ch, 0, 0, 1.5, pose, emotion=ch.get("signature_expression", "neutral"), t=0.1)
     # expression strip
@@ -47,7 +50,7 @@ def character_sheet(ch: dict) -> np.ndarray:
         cx, cy = 700 + col * 260, 360 + row * 330
         cv2.rectangle(img, (cx - 115, cy - 150), (cx + 115, cy + 125), (255, 255, 255), -1, cv2.LINE_AA)
         cv2.rectangle(img, (cx - 115, cy - 150), (cx + 115, cy + 125), (225, 215, 235), 2, cv2.LINE_AA)
-        c2 = _place(img, 0, 0, cx, cy + 105, 1.0)
+        c2 = _place(img, 0, 0, cx, cy + 105, 1.0, look=look)
         rig.draw_character(c2, ch, 0, 0, 0.42, rig.make_pose("idle", 0, e, 0.0, 0.0), emotion=e, t=0.1)
     pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     d = ImageDraw.Draw(pil)
@@ -69,8 +72,27 @@ def character_sheet(ch: dict) -> np.ndarray:
     return cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
 
 
-def world_preview(world: dict) -> np.ndarray:
+def world_preview(world: dict, look_id: str | None = None) -> np.ndarray:
     plan = {"scene": {"id": "preview_" + world["id"], "camera": {"shot": "wide", "move": "static"}, "emotion": "neutral",
                       "effects": [], "actions": [], "environment": {"crowd": 0, "time_of_day": world.get("time_of_day", "day")}},
-            "world": world, "cast": [], "lines": [], "duration": 3, "fps": 24}
+            "world": world, "cast": [], "lines": [], "duration": 3, "fps": 24, "look": look_id}
+    return render_still(plan, 1.0, res=0.5)
+
+
+def look_preview(look_id: str) -> np.ndarray:
+    """A sample frame (two characters in a small town) drawn in the given art style, for the style picker."""
+    from ..engines import schemas as S
+    chars = S.normalize_characters(
+        [{"name": "Mia", "appearance": {"build": "normal", "skin": "#f1c27d", "hair": {"style": "pigtails", "color": "#7a3b1e"},
+                                        "shirt": {"color": "#ef476f", "pattern": "star"}, "pants_color": "#355070", "eyes": "round"}},
+         {"name": "Ben", "appearance": {"build": "chunky", "skin": "#c68642", "hair": {"style": "spiky", "color": "#222222"},
+                                        "shirt": {"color": "#118ab2", "pattern": "stripes"}, "pants_color": "#2b2d42", "accessory": "cap",
+                                        "accessory_color": "#ffd166"}}],
+        {"num_characters": 2, "narrator": False})
+    world = S.normalize_world({"name": "Main street", "kind": "town_street", "time_of_day": "day", "props": ["tree", "lamp", "bench"]}, 0)
+    scene = {"id": "look_preview", "camera": {"shot": "medium", "move": "static"}, "emotion": "happy", "effects": [],
+             "environment": {"crowd": 0, "time_of_day": "day"},
+             "actions": [{"character_id": chars[0]["id"], "animation": "wave", "at": 0.0, "note": ""},
+                         {"character_id": chars[1]["id"], "animation": "idle", "at": 0.0, "note": ""}]}
+    plan = {"scene": scene, "world": world, "cast": chars, "lines": [], "duration": 3, "fps": 24, "look": look_id}
     return render_still(plan, 1.0, res=0.5)

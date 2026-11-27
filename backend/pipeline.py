@@ -24,7 +24,7 @@ from .engines import offline, schemas as S, viral, voices as voice_engine
 from .engines import llm_engine
 from .jobs import JobContext
 from .providers.base import ProviderError, ProviderUnavailable
-from .render import assemble, scene as scene_render, sheets
+from .render import assemble, looks, scene as scene_render, sheets
 from .render.captions import build_ass, build_srt
 from .render.timeline import build_timeline
 
@@ -94,6 +94,11 @@ def style_of(p: dict) -> dict | None:
     return db.get_style((p.get("options") or {}).get("style_id"))
 
 
+def look_id_of(p: dict) -> str:
+    """The art style chosen for this project (see render/looks.py)."""
+    return looks.get((p.get("options") or {}).get("art_style")).id
+
+
 def _fallback(pid: str, stage: str, settings: dict, what: str, exc: Exception) -> None:
     if not settings.get("allow_fallback"):
         raise exc
@@ -140,13 +145,14 @@ def stage_story(ctx: JobContext, pid: str, prog, force: bool = False) -> dict:
 
 # ------------------------------------------------------------------ stage: characters
 def _register_sheets(pid: str, chars: list[dict]) -> None:
+    look_id = look_id_of(db.get_project(pid))
     d = db.project_dir(pid) / "characters"
     d.mkdir(exist_ok=True)
     for ch in chars:
         if ch.get("is_narrator"):
             continue
         out = d / f"{ch['id']}_{S.slug(ch['name'])}_sheet.png"
-        cv2.imwrite(str(out), sheets.character_sheet(ch))
+        cv2.imwrite(str(out), sheets.character_sheet(ch, look_id))
         db.register_file(pid, "character_sheet", out, f"{ch['name']} - reference sheet.png", {"character_id": ch["id"]})
 
 
@@ -179,11 +185,12 @@ def stage_characters(ctx, pid, prog) -> dict:
 
 # ------------------------------------------------------------------ stage: worlds
 def _register_world_previews(pid: str, worlds: list[dict]) -> None:
+    look_id = look_id_of(db.get_project(pid))
     d = db.project_dir(pid) / "worlds"
     d.mkdir(exist_ok=True)
     for w in worlds:
         out = d / f"{w['id']}_{S.slug(w['name'])}.png"
-        cv2.imwrite(str(out), sheets.world_preview(w))
+        cv2.imwrite(str(out), sheets.world_preview(w, look_id))
         db.register_file(pid, "image", out, f"{w['name']} - location preview.png", {"world_id": w["id"]})
 
 
@@ -384,7 +391,8 @@ def build_plan(p: dict, scene: dict, tl_scene: dict | None, fps: int, style: dic
                           "env": _env_for(va, fps) if va else None})
     dur = tl_scene["duration"] if tl_scene else float(scene["duration"])
     world = _bias_palette(worlds.get(scene["location_id"]) or p["worlds"][0], style)
-    return {"scene": scene, "world": world, "cast": cast, "lines": lines, "duration": dur, "fps": fps, "style": style}
+    return {"scene": scene, "world": world, "cast": cast, "lines": lines, "duration": dur, "fps": fps, "style": style,
+            "look": look_id_of(p)}
 
 
 # ------------------------------------------------------------------ stage: visuals
@@ -393,7 +401,7 @@ def compose_image_prompt(p: dict, scene: dict, style: dict | None) -> str:
     world = next((w for w in p["worlds"] if w["id"] == scene["location_id"]), p["worlds"][0])
     chars = "; ".join(by_id[c].get("visual_prompt") or by_id[c]["name"] for c in scene["characters"] if c in by_id and not by_id[c].get("is_narrator"))
     acts = "; ".join(f"{by_id[a['character_id']]['name']} {a['animation']} {a['note']}".strip() for a in scene["actions"] if a["character_id"] in by_id)
-    return (f"Vertical 9:16 frame from a stylised blocky 3D toy-like animated short (Roblox-inspired look, original characters, bright saturated colours, clean lighting). "
+    return (f"Vertical 9:16 frame from {looks.get(look_id_of(p)).prompt}. Original characters. "
             f"Location: {world['name']} - {world.get('visual_prompt') or world['description']}. Time of day: {scene['environment'].get('time_of_day') or world['time_of_day']}. "
             f"Characters (keep their looks EXACTLY as described): {chars}. Action: {scene['description']} {acts}. Mood: {scene['emotion']}. Camera: {scene['camera']['shot']} shot. "
             f"{(style or {}).get('directive', '')[:300]} No text, no watermark, no logos.")
@@ -410,6 +418,10 @@ def stage_visuals(ctx, pid, prog) -> dict:
     vdir.mkdir(exist_ok=True)
     mode = settings.get("visual_mode", "procedural")
     img_p, vid_p = providers.image(), providers.video()
+    chosen = looks.get(look_id_of(p))
+    if not chosen.procedural and not (mode in ("ai_images", "ai_video") and not img_p.offline):
+        warn(pid, "visuals", f"The “{chosen.label}” look is made by an AI image provider, and none is set up (it needs an OpenAI key and Visual mode set to AI images). "
+                             f"These scenes are drawn in the built-in “{looks.get(chosen.fallback).label}” look instead.")
     assets: dict = {}
     notes = {"procedural": 0, "ai_image": 0, "ai_video": 0, "fallback": 0}
     for i, sc in enumerate(p["scenes"]):

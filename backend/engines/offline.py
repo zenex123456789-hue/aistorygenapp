@@ -301,7 +301,7 @@ def write_script(story: dict, chars: list[dict], worlds: list[dict], options: di
         "sfx": [{"name": "chime" if "clock" in motifs else "sting", "at": 0.0}, {"name": "crowd_gasp", "at": 1.0}],
         "effects": ["flash", "exclaim"] + motif_fx[:2] + fx_bg, "on_screen_text": "12:00" if "clock" in motifs else "",
         "voiceover_notes": "Punchy, urgent opening.", "music_mood": mood, "transition": "cut",
-        "visual_prompt": f"{H['name']} in the middle of a chaotic {place} square, crowd reacting, bright cartoon Roblox style",
+        "visual_prompt": f"{H['name']} in the middle of a chaotic {place} square, crowd reacting, bright cartoon style",
     })
     if options["length"] != "short":
         intro_side = [_L(Sd["id"], rng.choice([f"Morning, {H['name']}! Big day in {place}.", f"{H['name']}! You're up early!"]), "happy")] if Sd else []
@@ -364,7 +364,7 @@ def write_script(story: dict, chars: list[dict], worlds: list[dict], options: di
             "environment": {"crowd": 5, "crowd_form": crowd_form, "time_of_day": tod}, "emotion": "scared", "duration": 6.0,
             "sfx": [{"name": rng.choice(["alarm", "rumble", "crowd_gasp", "zap"]), "at": 0.4}, {"name": "boing", "at": 2.0}],
             "effects": ["shake"] + (["rain"] if horror else ["sparkles"]) + motif_fx[:1] + fx_bg, "music_mood": "tense" if not funny else mood,
-            "transition": "slide", "visual_prompt": f"{desc} cartoon Roblox style chaos",
+            "transition": "slide", "visual_prompt": f"{desc} bright cartoon style chaos",
         })
     # twist
     tw = options["twist"]

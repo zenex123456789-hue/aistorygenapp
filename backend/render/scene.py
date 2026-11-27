@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 
 from .. import config
-from . import rig
+from . import looks, rig
 from .draw import Cam, Canvas, bgr, W, H, star_pts
 from .world import FEET_Y, draw_world, effective_palette, sky_image
 
@@ -50,6 +50,7 @@ class SceneRenderer:
         self.cast = plan["cast"]                      # list of character specs (on-screen only)
         self.lines = plan.get("lines", [])
         self.sw, self.sh = int(W * res), int(H * res)
+        self.look = looks.drawn(plan.get("look"))        # art style (an AI-only look is drawn as its fallback here)
         self.sky: dict = {}
         self.rng = random.Random(self.scene["id"])
         n = max(1, min(4, len(self.cast)))
@@ -157,6 +158,7 @@ class SceneRenderer:
         spk_head = (FEET_Y - 5.0 * 100 * self.cast[sp_idx].get("height", 1.0) * self.cscale) if sp_idx is not None else None
         cam = self._camera(t, spk_x, spk_head)
         cv = Canvas(img, cam, res)
+        cv.look = self.look
 
         clock = (11, int(55 + 5 * min(1.0, t / max(self.duration * 0.6, 1.0)))) if "clock_tower" in (self.world.get("landmark", "") + " ".join(self.world.get("props", []))).lower().replace(" ", "_") else (11, 55)
         draw_world(cv, self.world, pal, t, {"tod": tod, "clock": (clock[0] + (1 if clock[1] >= 60 else 0), clock[1] % 60)})
@@ -253,7 +255,7 @@ class SceneRenderer:
             hsv[:, :, 1] = np.clip(hsv[:, :, 1] * sat, 0, 255)
             hsv[:, :, 2] = np.clip(hsv[:, :, 2] * bri, 0, 255)
             out = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
-        return out
+        return looks.apply(self.look, out, t)
 
     def _poof(self, cv: Canvas, x: float, y: float, p: float, s: float):
         p = max(0.0, min(1.0, p))

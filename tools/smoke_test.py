@@ -82,6 +82,14 @@ def main(argv: list[str]) -> int:
     check("the update check answers (needs no internet to do so)", s == 200 and bool(upd.get("current")) and bool(upd.get("status")), f"{s} {upd}")
     s, rel = me.json("GET", "/api/releases")
     check("the releases list answers (whatever GitHub says)", s == 200 and bool(rel.get("status")) and isinstance(rel.get("releases"), list), f"{s} {rel}")
+    check("the art styles are listed", len(caps.get("looks", [])) >= 5, str(caps.get("looks"))[:80])
+    s, img, hdr, _ = me.req("GET", "/api/looks/pixel/preview.png")
+    check("an art style preview picture is served", s == 200 and img[:4] == b"\x89PNG", str(s))
+    s, wr = me.json("POST", "/api/story/from-prompt", {"prompt": "a spooky story about a school where the lights go out at 3pm, 4 characters", "options": {}})
+    if llm.get("offline"):
+        check("with no AI connected, 'write from my prompt' is refused honestly (not faked)", s == 409 and wr.get("code") == "no_ai", f"{s} {wr}")
+    else:
+        check("'write from my prompt' returns a story that is not just the prompt", s == 200 and wr.get("story", {}).get("title") and "spooky story about a school" not in wr["story"]["title"].lower(), f"{s} {str(wr)[:160]}")
     s, page, _, _ = me.req("GET", "/")
     check("the home page opens when signed in", s == 200 and b"Story Factory" in page, str(s))
 

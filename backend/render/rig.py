@@ -1,4 +1,4 @@
-"""Blocky, Roblox-inspired 2.5D character rig.
+"""Blocky, Roblox-inspired 2.5D character rig (its roundness, outline and proportions follow the art style, see looks.py).
 
 A character is fully described by its spec dict (see engines/schemas.py), so the
 same person is drawn identically in every scene and in the reference sheet:
@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 
+from . import looks
 from .draw import Canvas, bgr, rot_pts, rrect_pts, shade, star_pts
 
 OUTLINE = (30, 24, 20)
@@ -170,6 +171,11 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
                    form: str = "", blink_seed: float = 0.0) -> None:
     if not pose.visible:
         return
+    look = getattr(cv, "look", None) or looks.get(looks.DEFAULT)
+
+    def rlook(x, y, w, h, r, n=5):                       # corner radius follows the art style (blocky 1.0, round cartoon 2.6, ...)
+        return rrect_pts(x, y, w, h, r * look.radius, n)
+
     u = 100.0 * ch.get("height", 1.0) * scale
     build = {"slim": 0.88, "normal": 1.0, "chunky": 1.18}.get(ch.get("build", "normal"), 1.0)
     form_skin, ears, facekind = (None, None, None)
@@ -180,7 +186,7 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
     shirt, pants, shoes = bgr(ch["shirt_color"]), bgr(ch["pants_color"]), bgr(ch["shoes_color"])
     hair = bgr(ch["hair_color"])
     acc_color = bgr(ch.get("accessory_color", "#ffd166"))
-    ow = 3.6 * scale
+    ow = 3.6 * scale * look.outline
 
     # transform: scale/rotate everything about the feet
     def T(px, py):
@@ -218,7 +224,7 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
     hip_y = -1.9 * u
     torso_w, torso_h = 2.0 * u * build, 2.0 * u
     top_y = hip_y - torso_h
-    head_w, head_h = 1.55 * u, 1.38 * u
+    head_w, head_h = 1.55 * u * look.head, 1.38 * u * look.head
     head_top = top_y - head_h + 0.12 * u
 
     # ---- behind-body accessories
@@ -227,28 +233,28 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
         s.poly([(-torso_w * 0.55, top_y), (torso_w * 0.55, top_y), (torso_w * 0.95, hip_y + 0.9 * u), (-torso_w * 0.95, hip_y + 0.9 * u)],
                acc_color, OUTLINE, ow)
     if acc == "backpack":
-        s.poly(rrect_pts(-torso_w * 0.62, top_y + 0.2 * u, torso_w * 1.24, 1.5 * u, 0.25 * u), acc_color, OUTLINE, ow)
+        s.poly(rlook(-torso_w * 0.62, top_y + 0.2 * u, torso_w * 1.24, 1.5 * u, 0.25 * u), acc_color, OUTLINE, ow)
     if form == "cat" or form == "dog":
         s.polyline([(torso_w * 0.4, hip_y), (torso_w * 0.95, hip_y + 0.2 * u), (torso_w * 1.1, hip_y - 0.9 * u)],
                    skin, 0.45 * u)
     if ch.get("hair_style") == "long" and not form:
-        s.poly(rrect_pts(-head_w * 0.62, head_top + 0.2 * u, head_w * 1.24, head_h + 1.1 * u, 0.3 * u), hair, OUTLINE, ow)
+        s.poly(rlook(-head_w * 0.62, head_top + 0.2 * u, head_w * 1.24, head_h + 1.1 * u, 0.3 * u), hair, OUTLINE, ow)
 
     # ---- legs
     leg_w, leg_h = 0.95 * u * build, 1.95 * u
     for side, ang in ((-1, pose.ll), (1, pose.rl)):
         px = side * 0.52 * u * build
-        pts = rrect_pts(px - leg_w / 2, hip_y, leg_w, leg_h, 0.2 * u, 3)
+        pts = rlook(px - leg_w / 2, hip_y, leg_w, leg_h, 0.2 * u, 3)
         pts = rot_pts(pts, (px, hip_y), ang * side)
         s.poly(pts, pants, OUTLINE, ow)
-        foot = rrect_pts(px - leg_w / 2 - 0.05 * u, hip_y + leg_h - 0.42 * u, leg_w + 0.1 * u, 0.42 * u, 0.15 * u, 3)
+        foot = rlook(px - leg_w / 2 - 0.05 * u, hip_y + leg_h - 0.42 * u, leg_w + 0.1 * u, 0.42 * u, 0.15 * u, 3)
         foot = rot_pts(foot, (px, hip_y), ang * side)
         s.poly(foot, shoes, OUTLINE, ow)
 
     # ---- torso
-    s.poly(rrect_pts(-torso_w / 2, top_y, torso_w, torso_h, 0.22 * u), shirt, OUTLINE, ow)
+    s.poly(rlook(-torso_w / 2, top_y, torso_w, torso_h, 0.22 * u), shirt, OUTLINE, ow)
     dark = shade(shirt, 0.82)
-    s.poly(rrect_pts(-torso_w / 2 + 0.06 * u, hip_y - 0.38 * u, torso_w - 0.12 * u, 0.32 * u, 0.1 * u, 3), dark)
+    s.poly(rlook(-torso_w / 2 + 0.06 * u, hip_y - 0.38 * u, torso_w - 0.12 * u, 0.32 * u, 0.1 * u, 3), dark)
     pat = ch.get("shirt_pattern", "none")
     pc = shade(shirt, 1.45) if sum(shirt) < 480 else shade(shirt, 0.65)
     if pat == "stripes":
@@ -260,7 +266,7 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
     elif pat == "zigzag":
         s.polyline([(-torso_w * 0.42 + i * torso_w * 0.84 / 6, top_y + torso_h * (0.45 + (0.16 if i % 2 else -0.16))) for i in range(7)], pc, 0.17 * u)
     elif pat == "pocket":
-        s.poly(rrect_pts(-0.7 * u, top_y + 0.7 * u, 0.7 * u, 0.65 * u, 0.08 * u, 3), pc, OUTLINE, ow * 0.5)
+        s.poly(rlook(-0.7 * u, top_y + 0.7 * u, 0.7 * u, 0.65 * u, 0.08 * u, 3), pc, OUTLINE, ow * 0.5)
     elif pat == "heart":
         cx0, cy0, r0 = 0, top_y + torso_h * 0.45, 0.28 * u
         s.circle(cx0 - r0, cy0 - r0 * 0.4, r0, pc)
@@ -269,8 +275,8 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
     if acc == "tie":
         s.poly([(-0.18 * u, top_y), (0.18 * u, top_y), (0.12 * u, top_y + 1.25 * u), (0, top_y + 1.45 * u), (-0.12 * u, top_y + 1.25 * u)], acc_color, OUTLINE, ow * 0.6)
     if acc == "scarf":
-        s.poly(rrect_pts(-torso_w * 0.5, top_y - 0.05 * u, torso_w, 0.4 * u, 0.15 * u, 3), acc_color, OUTLINE, ow)
-        s.poly(rrect_pts(0.3 * u, top_y + 0.2 * u, 0.4 * u, 1.1 * u, 0.1 * u, 3), acc_color, OUTLINE, ow)
+        s.poly(rlook(-torso_w * 0.5, top_y - 0.05 * u, torso_w, 0.4 * u, 0.15 * u, 3), acc_color, OUTLINE, ow)
+        s.poly(rlook(0.3 * u, top_y + 0.2 * u, 0.4 * u, 1.1 * u, 0.1 * u, 3), acc_color, OUTLINE, ow)
     if acc == "bowtie":
         s.poly([(0, top_y + 0.12 * u), (-0.55 * u, top_y - 0.1 * u), (-0.55 * u, top_y + 0.34 * u)], acc_color, OUTLINE, ow * 0.6)
         s.poly([(0, top_y + 0.12 * u), (0.55 * u, top_y - 0.1 * u), (0.55 * u, top_y + 0.34 * u)], acc_color, OUTLINE, ow * 0.6)
@@ -280,8 +286,8 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
     for side, ang in ((-1, pose.la), (1, pose.ra)):
         px = side * (torso_w / 2 + arm_w * 0.45)
         py = top_y + 0.25 * u
-        pts = rrect_pts(px - arm_w / 2, py, arm_w, arm_h, 0.2 * u, 3)
-        hand = rrect_pts(px - arm_w / 2, py + arm_h - 0.6 * u, arm_w, 0.6 * u, 0.18 * u, 3)
+        pts = rlook(px - arm_w / 2, py, arm_w, arm_h, 0.2 * u, 3)
+        hand = rlook(px - arm_w / 2, py + arm_h - 0.6 * u, arm_w, 0.6 * u, 0.18 * u, 3)
         s.poly(rot_pts(pts, (px, py), -ang * side), shirt, OUTLINE, ow)
         s.poly(rot_pts(hand, (px, py), -ang * side), skin, OUTLINE, ow)
 
@@ -291,7 +297,7 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
     def H(pts):
         return rot_pts(pts, (0, top_y + 0.1 * u), tilt) if tilt else pts
 
-    head_pts = rrect_pts(hx - head_w / 2, head_top, head_w, head_h, 0.3 * u)
+    head_pts = rlook(hx - head_w / 2, head_top, head_w, head_h, 0.3 * u)
     # ears behind head for animals
     if ears == "tri":
         for sd in (-1, 1):
@@ -302,11 +308,11 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
             s.poly(H([(sd * 0.78 * u, head_top + 0.2 * u), (sd * 0.55 * u, head_top - 0.35 * u), (sd * 0.2 * u, head_top + 0.12 * u)]), skin, OUTLINE, ow)
     elif ears == "floppy":
         for sd in (-1, 1):
-            s.poly(H(rrect_pts(sd * 0.95 * u - 0.28 * u, head_top + 0.05 * u, 0.56 * u, 1.1 * u, 0.25 * u, 3)), shade(skin, 0.7), OUTLINE, ow)
+            s.poly(H(rlook(sd * 0.95 * u - 0.28 * u, head_top + 0.05 * u, 0.56 * u, 1.1 * u, 0.25 * u, 3)), shade(skin, 0.7), OUTLINE, ow)
     elif ears == "long":
         for sd in (-1, 1):
-            s.poly(H(rrect_pts(sd * 0.38 * u - 0.22 * u, head_top - 1.3 * u, 0.44 * u, 1.5 * u, 0.22 * u, 3)), skin, OUTLINE, ow)
-            s.poly(H(rrect_pts(sd * 0.38 * u - 0.1 * u, head_top - 1.15 * u, 0.2 * u, 1.2 * u, 0.1 * u, 3)), (190, 170, 240))
+            s.poly(H(rlook(sd * 0.38 * u - 0.22 * u, head_top - 1.3 * u, 0.44 * u, 1.5 * u, 0.22 * u, 3)), skin, OUTLINE, ow)
+            s.poly(H(rlook(sd * 0.38 * u - 0.1 * u, head_top - 1.15 * u, 0.2 * u, 1.2 * u, 0.1 * u, 3)), (190, 170, 240))
     elif ears == "round":
         for sd in (-1, 1):
             s.circle(*_rp((sd * 0.62 * u, head_top + 0.05 * u), (0, top_y + 0.1 * u), tilt), 0.3 * u, skin, OUTLINE, ow)
@@ -328,15 +334,15 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
     if not form and hs != "bald":
         top = head_top
         if hs in ("short", "bob", "long", "bun", "pigtails"):
-            s.poly(H(rrect_pts(hx - head_w / 2 - 0.03 * u, top - 0.04 * u, head_w + 0.06 * u, head_h * 0.38, 0.28 * u)), hair, OUTLINE, ow)
+            s.poly(H(rlook(hx - head_w / 2 - 0.03 * u, top - 0.04 * u, head_w + 0.06 * u, head_h * 0.38, 0.28 * u)), hair, OUTLINE, ow)
         if hs == "bob":
             for sd in (-1, 1):
-                s.poly(H(rrect_pts(sd * head_w / 2 - (0.2 * u if sd < 0 else 0), top + 0.2 * u, 0.2 * u, head_h * 0.7, 0.08 * u, 3)), hair, OUTLINE, ow * 0.7)
+                s.poly(H(rlook(sd * head_w / 2 - (0.2 * u if sd < 0 else 0), top + 0.2 * u, 0.2 * u, head_h * 0.7, 0.08 * u, 3)), hair, OUTLINE, ow * 0.7)
         if hs == "spiky":
             for i in range(5):
                 bx = -head_w * 0.42 + i * head_w * 0.21
                 s.poly(H([(bx - 0.17 * u, top + 0.3 * u), (bx + 0.02 * u, top - 0.55 * u + (0.2 * u if i in (0, 4) else 0)), (bx + 0.2 * u, top + 0.3 * u)]), hair, OUTLINE, ow * 0.8)
-            s.poly(H(rrect_pts(hx - head_w / 2, top + 0.05 * u, head_w, head_h * 0.25, 0.1 * u, 3)), hair)
+            s.poly(H(rlook(hx - head_w / 2, top + 0.05 * u, head_w, head_h * 0.25, 0.1 * u, 3)), hair)
         if hs == "mohawk":
             s.poly(H([(-0.28 * u, top + 0.35 * u), (-0.18 * u, top - 0.75 * u), (0.18 * u, top - 0.75 * u), (0.28 * u, top + 0.35 * u)]), hair, OUTLINE, ow)
         if hs == "curly":
@@ -369,9 +375,9 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
         elif eyes == "sleepy":
             s.ellipse(cx_, cy_, 0.13 * u, 0.06 * u, (25, 20, 20))
         else:
-            s.ellipse(cx_, cy_, 0.095 * u, 0.135 * u, (25, 20, 20))
-            if eyes == "sparkle":
-                s.circle(cx_ - 0.03 * u, cy_ - 0.05 * u, 0.04 * u, (255, 255, 255))
+            s.ellipse(cx_, cy_, 0.095 * u * look.eyes, 0.135 * u * look.eyes, (25, 20, 20))
+            if eyes == "sparkle" or look.sparkle_eyes:
+                s.circle(cx_ - 0.03 * u * look.eyes, cy_ - 0.05 * u * look.eyes, 0.04 * u * look.eyes, (255, 255, 255))
         # brows: positive brow_in raises the inner end (sad/worried), negative lowers it (angry)
         bl = 0.22 * u
         by0 = cy_ - 0.27 * u + brow_h * 0.012 * u
@@ -443,29 +449,29 @@ def draw_character(cv: Canvas, ch: dict, x: float, feet_y: float, scale: float, 
         a, b = FP(-ex + 0.24 * u, eye_y), FP(ex - 0.24 * u, eye_y)
         s.line(a[0], a[1], b[0], b[1], OUTLINE, 4 * scale)
     elif acc == "cap":
-        s.poly(H(rrect_pts(-head_w / 2 - 0.04 * u, head_top - 0.28 * u, head_w + 0.08 * u, 0.62 * u, 0.3 * u)), acc_color, OUTLINE, ow)
-        s.poly(H(rrect_pts(-0.1 * u, head_top + 0.18 * u, head_w / 2 + 0.6 * u, 0.2 * u, 0.1 * u, 3)), shade(acc_color, 0.8), OUTLINE, ow)
+        s.poly(H(rlook(-head_w / 2 - 0.04 * u, head_top - 0.28 * u, head_w + 0.08 * u, 0.62 * u, 0.3 * u)), acc_color, OUTLINE, ow)
+        s.poly(H(rlook(-0.1 * u, head_top + 0.18 * u, head_w / 2 + 0.6 * u, 0.2 * u, 0.1 * u, 3)), shade(acc_color, 0.8), OUTLINE, ow)
     elif acc == "beanie":
-        s.poly(H(rrect_pts(-head_w / 2 - 0.05 * u, head_top - 0.35 * u, head_w + 0.1 * u, 0.8 * u, 0.35 * u)), acc_color, OUTLINE, ow)
+        s.poly(H(rlook(-head_w / 2 - 0.05 * u, head_top - 0.35 * u, head_w + 0.1 * u, 0.8 * u, 0.35 * u)), acc_color, OUTLINE, ow)
         s.circle(*_rp((0, head_top - 0.42 * u), (0, top_y + 0.1 * u), tilt), 0.2 * u, shade(acc_color, 1.35), OUTLINE, ow * 0.7)
     elif acc == "crown":
         s.poly(H([(-0.65 * u, head_top + 0.12 * u), (-0.65 * u, head_top - 0.5 * u), (-0.33 * u, head_top - 0.2 * u), (0, head_top - 0.62 * u),
                   (0.33 * u, head_top - 0.2 * u), (0.65 * u, head_top - 0.5 * u), (0.65 * u, head_top + 0.12 * u)]), bgr("#ffd23f"), OUTLINE, ow)
     elif acc == "headband":
-        s.poly(H(rrect_pts(-head_w / 2, head_top + 0.18 * u, head_w, 0.22 * u, 0.08 * u, 3)), acc_color, OUTLINE, ow * 0.7)
+        s.poly(H(rlook(-head_w / 2, head_top + 0.18 * u, head_w, 0.22 * u, 0.08 * u, 3)), acc_color, OUTLINE, ow * 0.7)
     elif acc == "top_hat":
-        s.poly(H(rrect_pts(-head_w * 0.62, head_top - 0.02 * u, head_w * 1.24, 0.2 * u, 0.08 * u, 3)), (40, 35, 35), OUTLINE, ow)
-        s.poly(H(rrect_pts(-head_w * 0.38, head_top - 0.95 * u, head_w * 0.76, 1.0 * u, 0.1 * u, 3)), (40, 35, 35), OUTLINE, ow)
-        s.poly(H(rrect_pts(-head_w * 0.38, head_top - 0.2 * u, head_w * 0.76, 0.16 * u, 0.04 * u, 3)), acc_color)
+        s.poly(H(rlook(-head_w * 0.62, head_top - 0.02 * u, head_w * 1.24, 0.2 * u, 0.08 * u, 3)), (40, 35, 35), OUTLINE, ow)
+        s.poly(H(rlook(-head_w * 0.38, head_top - 0.95 * u, head_w * 0.76, 1.0 * u, 0.1 * u, 3)), (40, 35, 35), OUTLINE, ow)
+        s.poly(H(rlook(-head_w * 0.38, head_top - 0.2 * u, head_w * 0.76, 0.16 * u, 0.04 * u, 3)), acc_color)
     elif acc == "bandana":
-        s.poly(H(rrect_pts(-head_w / 2, head_top + 0.05 * u, head_w, 0.32 * u, 0.1 * u, 3)), acc_color, OUTLINE, ow * 0.7)
+        s.poly(H(rlook(-head_w / 2, head_top + 0.05 * u, head_w, 0.32 * u, 0.1 * u, 3)), acc_color, OUTLINE, ow * 0.7)
         s.poly(H([(head_w / 2, head_top + 0.1 * u), (head_w / 2 + 0.4 * u, head_top - 0.1 * u), (head_w / 2 + 0.35 * u, head_top + 0.35 * u)]), acc_color, OUTLINE, ow * 0.7)
     elif acc in ("cat_ears", "bunny_ears") and not ears:
         for sd in (-1, 1):
             if acc == "cat_ears":
                 s.poly(H([(sd * 0.7 * u, head_top + 0.1 * u), (sd * 0.4 * u, head_top - 0.5 * u), (sd * 0.1 * u, head_top + 0.1 * u)]), acc_color, OUTLINE, ow)
             else:
-                s.poly(H(rrect_pts(sd * 0.4 * u - 0.2 * u, head_top - 1.15 * u, 0.4 * u, 1.3 * u, 0.2 * u, 3)), acc_color, OUTLINE, ow)
+                s.poly(H(rlook(sd * 0.4 * u - 0.2 * u, head_top - 1.15 * u, 0.4 * u, 1.3 * u, 0.2 * u, 3)), acc_color, OUTLINE, ow)
 
 
 def _rp(p, pivot, deg):

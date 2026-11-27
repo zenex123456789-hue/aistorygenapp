@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from ..render import looks
+
 GENRES = ["comedy", "mystery", "horror", "adventure", "drama", "fantasy", "everyday"]
 GENRE_LABELS = {"everyday": "Unexpected everyday situation"}
 TONES = ["silly", "wholesome", "suspenseful", "spooky", "dramatic", "absurd", "heartwarming", "chaotic"]
@@ -117,6 +119,7 @@ def normalize_options(raw: dict | None) -> dict:
         "audience": pick(raw.get("audience"), AUDIENCES, "everyone"),
         "duration": int(clamp(raw.get("duration"), 10, 120, 30)),
         "style_id": text(raw.get("style_id"), "", 40),
+        "art_style": pick(raw.get("art_style"), looks.IDS, looks.DEFAULT),
         "narrator": bool(raw.get("narrator", True)),
         "seed": raw.get("seed"),
     }

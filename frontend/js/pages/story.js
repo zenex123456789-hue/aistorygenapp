@@ -3,15 +3,15 @@ import { S, selectProject, loadProjects, startRun, startStage, isRunning, track,
 import { h, icon, toast, field, select, toggle, slider, copyBtn, busy, title, empty } from "../ui.js";
 
 const REVIEW_STAGES = ["story", "characters", "script", "voices"];
-const draft = { pid: null, idea: "", options: defaults(), review: false, concepts: null, conceptInfo: null };
+const draft = { pid: null, idea: "", options: defaults(), review: false, concepts: null, conceptInfo: null, written: null };
 
 function defaults() {
-  return { genre: "comedy", tone: "silly", length: "standard", duration: 30, num_characters: 3, audience: "everyone", setting: "", humour: 70, twist: 60, narrator: true, style_id: "" };
+  return { genre: "comedy", tone: "silly", length: "standard", duration: 30, num_characters: 3, audience: "everyone", setting: "", humour: 70, twist: 60, narrator: true, style_id: "", art_style: "blocky" };
 }
 function syncDraft() {
   const p = S.project;
   if (p && draft.pid !== p.id) {
-    draft.pid = p.id; draft.idea = p.idea || ""; draft.options = { ...defaults(), ...(p.options || {}) }; draft.concepts = null;
+    draft.pid = p.id; draft.idea = p.idea || ""; draft.options = { ...defaults(), ...(p.options || {}) }; draft.concepts = null; draft.written = null;
   }
 }
 
@@ -27,7 +27,7 @@ async function ensureProject() {
 
 async function generate() {
   const idea = draft.idea.trim();
-  if (!idea) { toast("Type a story idea first, e.g. “a funny Roblox story about a town where everyone turns into an animal at midnight”."); return; }
+  if (!idea) { toast("Type a story idea first, e.g. “a funny story about a town where everyone turns into an animal at midnight”."); return; }
   await ensureProject();
   await startRun({ from: "story", to: "export", fresh: true, idea, options: draft.options, pause_after: draft.review ? REVIEW_STAGES : [] });
 }
@@ -47,6 +47,64 @@ async function useConcept(c) {
   await startRun({ from: "characters", to: "export", idea: draft.idea, options: draft.options, pause_after: draft.review ? REVIEW_STAGES : [] });
 }
 
+async function writeFromPrompt() {
+  const prompt = draft.idea.trim();
+  if (!prompt) { toast("Type your prompt first: say what you want, e.g. “a spooky story about a school where the lights go out at 3pm, 4 characters, sad ending”."); return; }
+  draft.concepts = null;
+  try {
+    const r = await post("/api/story/from-prompt", { prompt, options: draft.options });
+    for (const a of r.applied || []) draft.options[a.key] = a.value;          // the settings the prompt asked for
+    draft.written = r;
+  } catch (e) {
+    draft.written = { error: e.message };
+  }
+  window.__rerender();
+  setTimeout(() => { const c = document.querySelector(".card.written, .card.written-err"); if (c) c.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 60);
+}
+
+function writtenCard() {
+  const w = draft.written;
+  const close = h("button", { class: "btn sm ghost", onclick: () => { draft.written = null; window.__rerender(); } }, icon("x", 14));
+  if (w.error) {
+    const noAi = /not connected/i.test(w.error);
+    return h("div", { class: "card written-err" },
+      h("div", { class: "card-head" }, h("div", { class: "grow" }, h("h3", noAi ? "The AI writer is not connected" : "Could not write the story")), close),
+      h("div", { class: "notice " + (noAi ? "warn" : "bad") }, icon("alert", 18), h("div", w.error)),
+      noAi ? h("div", { class: "row", style: { marginTop: "12px" } }, h("button", { class: "btn primary", onclick: () => (location.hash = "#/settings") }, icon("gear", 15), "Open Settings")) : null);
+  }
+  const st = w.story;
+  const row = (label, text) => text ? h("div", { class: "col", style: { gap: "2px" } }, h("div", { class: "tiny muted", style: { fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em" } }, label), h("div", text)) : null;
+  return h("div", { class: "card written" },
+    h("div", { class: "card-head" }, h("div", { class: "grow" }, h("h3", "Written from your prompt"),
+      h("div", { class: "small muted" }, `Story by ${w.label}. ${w.interpretation || ""}`)), close),
+    (w.applied || []).length ? h("div", { class: "row wrap gap-s", style: { marginBottom: "12px" } },
+      h("span", { class: "small muted" }, "Your prompt set:"), w.applied.map((a) => h("span", { class: "badge info" }, `${a.label}: ${typeof a.value === "string" ? title(String(a.value).replace(/_/g, " ")) : a.value}`))) : null,
+    h("h2", { style: { margin: "0 0 4px" } }, st.title),
+    h("div", { style: { marginBottom: "12px" } }, st.logline),
+    h("div", { class: "grid g2" }, row("Hook", st.hook_line), row("The strange idea", st.rule), row("Twist", st.twist), row("Ending", st.ending)),
+    h("div", { class: "row wrap", style: { marginTop: "16px" } },
+      h("button", { class: "btn primary", disabled: isRunning(), onclick: async () => { try { const c = w.story; draft.written = null; await useConcept(c); } catch (e) { toast(e.message, "bad"); } } }, icon("spark", 15), "Make the video from this story"),
+      h("button", { class: "btn", disabled: isRunning(), onclick: async (e) => { const b = e.currentTarget; b.disabled = true; b.innerHTML = '<span class="spinner dark"></span> Writing…'; await writeFromPrompt(); } }, icon("refresh", 15), "Write a different one")));
+}
+
+function lookPicker(o) {
+  const caps = S.caps;
+  const looks = caps.looks || [];
+  const imgActive = caps.providers.image.providers.find((x) => x.active);
+  const aiImages = ["ai_images", "ai_video"].includes(caps.settings.visual_mode) && !(imgActive && imgActive.offline);
+  const chosen = looks.find((l) => l.id === o.art_style) || looks[0];
+  const cards = looks.map((l) => h("button", { type: "button", class: "look" + (l.id === o.art_style ? " sel" : ""), "aria-pressed": String(l.id === o.art_style),
+    onclick: () => { o.art_style = l.id; window.__rerender(); } },
+    l.procedural ? h("img", { src: `/api/looks/${l.id}/preview.png`, alt: "", loading: "lazy" }) : h("div", { class: "look-ai" }, icon("spark", 26), h("span", "Made by AI images")),
+    h("b", l.label.replace(" (needs AI images)", "")), h("span", { class: "tiny muted" }, l.blurb)));
+  return h("div", { style: { marginTop: "16px" } },
+    h("div", { class: "f" }, h("span", "Art style ", h("span", { class: "hint" }, "how the video looks")),
+      h("div", { class: "looks" }, cards)),
+    chosen && !chosen.procedural ? h("div", { class: "notice " + (aiImages ? "" : "warn"), style: { marginTop: "10px" } }, icon(aiImages ? "check" : "alert", 18),
+      h("div", aiImages ? `${chosen.label.replace(" (needs AI images)", "")} pictures will be made by your AI image provider.`
+        : `${chosen.label.replace(" (needs AI images)", "")} needs an AI image provider (an OpenAI key, then Visual mode set to “AI keyframe images” on the Render page). Without it the video is drawn in the built-in ${chosen.fallback} look instead, and the project says so.`)) : null);
+}
+
 export function render(root) {
   syncDraft();
   const p = S.project;
@@ -58,7 +116,7 @@ export function render(root) {
     h("p", "Describe an idea, press one button, and the engine writes the story, designs characters and worlds, writes the script, records voiceovers, and renders a vertical 1080×1920 MP4.")));
 
   // ---- hero ----
-  const idea = h("textarea", { class: "big", placeholder: "Create a funny Roblox story about a town where everyone turns into a different animal every time the clock strikes twelve.", rows: 3 });
+  const idea = h("textarea", { class: "big", placeholder: "Write your idea or a full prompt, e.g. a funny story about a town where everyone turns into a different animal every time the clock strikes twelve, 3 characters, happy ending.", rows: 3 });
   idea.value = draft.idea;
   idea.addEventListener("input", () => (draft.idea = idea.value));
   const o = draft.options;
@@ -67,11 +125,16 @@ export function render(root) {
   const goBtn = h("button", { class: "btn go", onclick: async (e) => { try { await generate(); } catch (err) { toast(err.message, "bad"); } } },
     icon("spark", 20), running ? "Working…" : "GENERATE STORY");
   if (running) goBtn.disabled = true;
+  const promptBtn = h("button", { class: "btn primary", title: "The AI reads your text as a brief and invents a new story from it" }, icon("wand", 16), "Write story from my prompt");
+  promptBtn.onclick = async () => { const old = promptBtn.innerHTML; promptBtn.disabled = true; promptBtn.innerHTML = '<span class="spinner"></span> Writing…'; try { await writeFromPrompt(); } finally { promptBtn.disabled = false; promptBtn.innerHTML = old; } };
   const conceptBtn = h("button", { class: "btn" }, icon("wand", 16), "Preview concept ideas first");
   conceptBtn.onclick = async () => { const old = conceptBtn.innerHTML; conceptBtn.disabled = true; conceptBtn.innerHTML = '<span class="spinner dark"></span> Thinking…'; try { await previewConcepts(); } catch (e) { toast(e.message, "bad"); conceptBtn.disabled = false; conceptBtn.innerHTML = old; } };
 
   root.append(h("div", { class: "card hero" },
-    field("Your story idea", idea),
+    llm.offline ? h("div", { class: "notice warn", style: { marginBottom: "14px" } }, icon("alert", 18),
+      h("div", h("b", "Claude is not connected, so no AI is writing your story. "), "The built-in generator can only slot the words you type into a template, which is why your idea comes back almost as you typed it. ",
+        "Add your Claude key (see Settings) and restart the app to get a story actually written from your idea.")) : null,
+    field("Your story idea or prompt", idea),
     h("div", { class: "grid g4", style: { marginTop: "14px" } },
       field("Genre", select(E.genres, o.genre, set("genre"))),
       field("Tone", select(E.tones, o.tone, set("tone"))),
@@ -81,15 +144,18 @@ export function render(root) {
       field("Target audience", select(E.audiences, o.audience, set("audience"))),
       field("Setting", h("input", { type: "text", value: o.setting, placeholder: "optional: school, forest, city…", oninput: (e) => (o.setting = e.target.value) })),
       field("Style profile", select(styleOpts, o.style_id, set("style_id")), "from References")),
+    lookPicker(o),
     h("div", { class: "grid g3", style: { marginTop: "14px", alignItems: "end" } },
       slider("Humour level", o.humour, 0, 100, 5, set("humour"), (v) => v + "%"),
       slider("Twist intensity", o.twist, 0, 100, 5, set("twist"), (v) => v + "%"),
       h("div", { class: "col gap-s" }, toggle("Narrator voice", o.narrator, set("narrator")),
         toggle("Pause for review between steps", draft.review, (v) => (draft.review = v)))),
-    h("div", { class: "grid", style: { gridTemplateColumns: "1fr auto", gap: "12px", marginTop: "20px", alignItems: "center" } }, goBtn, conceptBtn),
+    h("div", { class: "actions" }, goBtn, promptBtn, conceptBtn),
     h("div", { class: "small muted", style: { marginTop: "10px" } },
       llm.offline ? "Writer: offline generator — lower quality than a real LLM; add an LLM key in .env for better stories. " : `Writer: ${llm.label}. `,
       draft.review ? "The pipeline will pause after the story, characters, script and voices so you can edit each before continuing." : "Runs the whole pipeline automatically; you can still edit any stage afterwards.")));
+
+  if (draft.written) root.append(writtenCard());
 
   // ---- concept picker ----
   if (draft.concepts) {
@@ -104,7 +170,7 @@ export function render(root) {
   }
 
   if (!p) {
-    if (!draft.concepts) root.append(h("div", { class: "card" }, empty("spark", "Nothing generated yet", "Type an idea above and press GENERATE STORY.")));
+    if (!draft.concepts && !draft.written) root.append(h("div", { class: "card" }, empty("spark", "Nothing generated yet", "Type an idea above and press GENERATE STORY.")));
     return;
   }
 

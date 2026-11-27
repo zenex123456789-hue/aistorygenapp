@@ -81,7 +81,9 @@ def _packaging_offline(project: dict) -> dict:
     titles = [st.get("title") or "Untitled", f"POV: you live in a {place} where {eff}"[:90], f"{hero} had ONE normal day planned…"]
     hooks = [f"Nobody warned {hero} about this {place}.", f"Wait for what happens when {parsed.get('trigger') or 'the rule kicks in'}…",
              f"This {place} has exactly one rule — and it's insane."]
-    tags = ["#roblox", "#robloxstory", "#storytime", "#shorts", "#fyp", "#animation", f"#{genre}"] + [f"#{m}" for m in (st.get("motifs") or [])[:2]]
+    from ..render import looks
+    look = looks.get((project.get("options") or {}).get("art_style"))
+    tags = [*look.tags, "#storytime", "#shorts", "#fyp", "#animation", f"#{genre}"] + [f"#{m}" for m in (st.get("motifs") or [])[:2]]
     return {"alt_hooks": hooks, "titles": titles,
             "description": f"{st.get('logline') or st.get('premise', '')} {st.get('comment_bait', '')}".strip()[:220],
             "hashtags": list(dict.fromkeys(tags))[:10],

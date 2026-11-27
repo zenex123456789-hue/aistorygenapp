@@ -54,6 +54,7 @@ class Canvas:
         self.img = img
         self.cam = cam
         self.res = res                      # internal resolution factor (0.5 for draft renders)
+        self.look = None                    # art style (render/looks.py); the character rig reads it
         self.k = cam.zoom * res
         self.ox = W / 2 * res
         self.oy = H / 2 * res

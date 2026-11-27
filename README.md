@@ -236,7 +236,8 @@ download, rename and delete everything.
   lip-sync line up. For real voices set an ElevenLabs or OpenAI key.
 * **Offline writer** is a combinatorial template engine: it produces valid, structured stories but they are plainer
   than an LLM's. Quality scales with the LLM you connect.
-* **Visuals** default to the app's own stylised, Roblox-*inspired* blocky renderer (no copyrighted characters or assets).
+* **Visuals** are drawn by the app's own renderer (no copyrighted characters or assets). The default is a Roblox-*inspired* blocky look; the **Art style** picker on the Story page also offers Round cartoon, Pixel art, Comic book and Ink sketch, and Anime or Realistic when an AI image provider (OpenAI key, Visual mode "AI keyframe images") is connected. Without one, those two fall back to the Round cartoon look and the project lists a warning.
+* **Write story from my prompt:** type what you want (as long and detailed as you like) and press this button. The AI reads it as a brief, invents the story, and sets genre, tone, characters and art style if you asked for them. It needs Claude connected (`ANTHROPIC_API_KEY`); without a key it tells you so rather than echoing your words.
   It is not photoreal or generative video. AI keyframes/clips are optional and only used when you choose them.
 * **Never faked:** if an AI provider fails and *Settings → fall back to the built-in renderer* is off, the render fails
   with the error. If it is on, every fallback is listed per scene in the render report and as a warning.

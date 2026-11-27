@@ -16,6 +16,7 @@ from . import audio_util, auth, config, db, jobs, pipeline, providers, updates
 from .version import VERSION
 from .engines import offline, references, schemas as S, llm_engine
 from .engines import voices as voice_engine
+from .render import looks, sheets
 from .providers.base import ProviderError
 
 app = Flask(__name__, static_folder=None)
@@ -137,6 +138,7 @@ def capabilities():
     return jsonify({"providers": caps, "ffmpeg": audio_util.ffmpeg_ok(), "settings": db.get_settings(),
                     "shared_keys": shared, "env_file": os.environ.get("SF_ENV_FILE", ""), "auth": auth.status(),
                     "version": VERSION, "releases_url": updates.RELEASES_URL, "hosted": bool(config.HOSTED),
+                    "looks": looks.public(),
                     "enums": {"genres": S.GENRES, "tones": S.TONES, "audiences": S.AUDIENCES, "lengths": list(S.LENGTHS), "durations": S.DURATIONS,
                               "location_kinds": S.LOCATION_KINDS, "emotions": S.EMOTIONS, "deliveries": S.DELIVERIES, "animations": S.ANIMATIONS,
                               "forms": S.FORMS, "effects": S.EFFECTS, "camera_shots": S.CAMERA_SHOTS, "camera_moves": S.CAMERA_MOVES,
@@ -436,6 +438,45 @@ def story_concepts():
     except ProviderError:
         raise
     return jsonify({"provider": llm.name, "offline": llm.offline, "concepts": cands})
+
+
+@app.post("/api/story/from-prompt")
+def story_from_prompt():
+    """The user's text is a brief: the AI invents a story from it. Needs a real AI writer; the offline generator would only
+    rearrange the user's own words, so it is refused instead of pretending."""
+    b = request.get_json(force=True) or {}
+    prompt = str(b.get("prompt", "")).strip()[:3000]
+    if len(prompt) < 3:
+        return err("Write what you want first, for example: a spooky story about a school where the lights go out at 3pm, 4 characters, sad ending.")
+    opts = S.normalize_options(b.get("options"))
+    llm = providers.llm()
+    if llm.offline:
+        return jsonify({"error": "Claude is not connected, so there is nothing that can write a story from your prompt. The built-in "
+                                 "generator only rearranges the words you typed into a template. Add your Claude key (Settings shows how), "
+                                 "restart the app, and try again.", "code": "no_ai"}), 409
+    style = db.get_style(opts.get("style_id"))
+    try:
+        res = llm_engine.from_prompt(llm, prompt, opts, style, db.recent_premises(20))
+    except ValueError as exc:
+        return err(str(exc), 502)
+    return jsonify({"provider": llm.name, "label": llm.label, **res})
+
+
+@app.get("/api/looks/<look_id>/preview.png")
+def look_preview(look_id):
+    lk = looks.LOOKS.get(look_id)
+    if not lk or not lk.procedural:
+        abort(404)
+    d = config.CACHE_DIR / "looks"
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / f"{lk.id}-v1.png"
+    if not f.exists():
+        import cv2
+        small = cv2.resize(sheets.look_preview(lk.id), (360, 640), interpolation=cv2.INTER_AREA)
+        cv2.imwrite(str(f), small[40:500])           # the sky-to-street part, where the characters are
+    resp = send_file(f, mimetype="image/png")
+    resp.headers["Cache-Control"] = "private, max-age=86400"
+    return resp
 
 
 # ------------------------------------------------------------------ voices

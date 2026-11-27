@@ -36,7 +36,7 @@ class OfflineImages(ImageProvider):
     label = "Built-in procedural renderer"
     offline = True
     verified = True
-    note = "Blocky Roblox-inspired 2.5D scenes drawn by the app itself. Same character spec every scene, so looks never drift."
+    note = "2.5D scenes drawn by the app itself in the art style you pick (blocky, cartoon, pixel, comic, sketch). Same character spec every scene, so looks never drift."
 
     def configured(self) -> bool:
         return True

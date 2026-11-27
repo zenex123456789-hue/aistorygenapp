@@ -12,7 +12,7 @@ from pathlib import Path
 from flask import Flask, abort, jsonify, request, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 
-from . import audio_util, auth, config, db, jobs, pipeline, providers
+from . import audio_util, auth, config, db, footage, jobs, pipeline, providers
 from .engines import offline, references, schemas as S, llm_engine
 from .engines import voices as voice_engine
 from .providers.base import ProviderError
@@ -488,6 +488,46 @@ def rename_file(fid):
 @app.delete("/api/files/<fid>")
 def delete_file(fid):
     return jsonify({"ok": db.delete_file(fid)})
+
+
+# ------------------------------------------------------------------ gameplay footage (your own screen recordings)
+@app.get("/api/footage")
+def list_footage():
+    return jsonify([{**m, "thumb_url": f"/footage/{m['id']}/thumb" if m.get("thumb") else "", "url": f"/footage/{m['id']}/video"} for m in footage.list_all()])
+
+
+@app.post("/api/footage")
+def upload_footage():
+    added, problems = [], []
+    for f in request.files.getlist("files"):
+        try:
+            added.append(footage.add(f, f.filename or "footage"))
+        except ValueError as exc:
+            problems.append(str(exc))
+    if not added:
+        return err(" ".join(problems) or "Choose a video file to upload.")
+    return jsonify({"added": added, "problems": problems}), 201
+
+
+@app.get("/footage/<fid>/<what>")
+def serve_footage(fid, what):
+    m = footage.get(fid)
+    if not m or what not in ("thumb", "video"):
+        abort(404)
+    path = footage.thumb_path(m) if what == "thumb" else footage.video_path(m)
+    if not path.exists():
+        abort(404)
+    return send_file(path, conditional=True)
+
+
+@app.delete("/api/footage/<fid>")
+def delete_footage(fid):
+    if not footage.get(fid):
+        return err("That clip does not exist.", 404)
+    footage.remove(fid)
+    if db.get_settings().get("footage_id") == fid:
+        db.set_settings({"footage_id": ""})
+    return jsonify({"ok": True})
 
 
 # ------------------------------------------------------------------ references & styles

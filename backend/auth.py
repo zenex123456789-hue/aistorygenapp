@@ -147,7 +147,7 @@ def init(app, hosted: bool) -> None:
             return None
         name = current_user()
         if not name:
-            if p.startswith(("/api/", "/files/", "/refs/", "/preview/")):
+            if p.startswith(("/api/", "/files/", "/refs/", "/footage/", "/preview/")):
                 return jsonify({"error": "Please sign in.", "login": "/login"}), 401
             return redirect("/login")
         if request.method == "POST" and RUN_PATH.match(p):

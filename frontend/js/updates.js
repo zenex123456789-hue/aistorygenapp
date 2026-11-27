@@ -67,8 +67,8 @@ function notesEl(text) {
 }
 
 function problem(r) {
-  if (r.status === "unlisted") return [h("div", { class: "notice warn" }, "The app cannot see the releases from here. The project's GitHub page is probably private, and a private page can only be read with a read-only token (see the README, \"Updates\"). It is also possible that nothing has been published yet."),
-    h("div", { class: "small muted" }, "You can still open the releases page in your browser (signed in to GitHub) and download from there.")];
+  if (r.status === "unlisted") return [h("div", { class: "notice warn" }, "GitHub did not list any releases for this project. Either none has been published yet, or the project is private (a private page can only be read with a read-only token, see the README, \"Updates\")."),
+    h("div", { class: "small muted" }, "You can still open the releases page in your browser and download from there.")];
   if (r.status === "offline") return [h("div", { class: "notice warn" }, "Could not reach GitHub. Check your internet connection and try again.")];
   return [h("div", { class: "notice warn" }, "GitHub did not answer" + (r.http ? ` (error ${r.http})` : "") + ". This is usually a temporary limit. Try again later.")];
 }

@@ -9,6 +9,8 @@ from __future__ import annotations
 import os
 import posixpath
 import re
+import threading
+import time
 from urllib.parse import quote, urlparse
 
 import requests
@@ -78,14 +80,33 @@ def _asset(a: dict) -> dict:
             "check_url": f"/api/releases/asset/{a['id']}/check", "download_url": f"/api/releases/asset/{a['id']}/file/{quote(name)}"}
 
 
+_cache: dict = {}
+_cache_lock = threading.Lock()
+CACHE_SECONDS = 60
+
+
 def list_releases(limit: int = 20) -> dict:
+    """GitHub lets an anonymous address make 60 calls an hour, and a hosted server is one address for the whole group,
+    so a good answer is reused for a minute."""
+    with _cache_lock:
+        hit = _cache.get(limit)
+        if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
+            return hit[1]
+    res = _fetch_releases(limit)
+    if res["status"] == "ok":
+        with _cache_lock:
+            _cache[limit] = (time.monotonic(), res)
+    return res
+
+
+def _fetch_releases(limit: int) -> dict:
     out = {"current": VERSION, "repo": REPO, "releases_url": RELEASES_URL}
     try:
         r = requests.get(f"{API}/repos/{REPO}/releases", params={"per_page": limit}, headers=_headers(), timeout=8)
     except requests.RequestException:
         return {**out, "status": "offline", "releases": []}
     if r.status_code == 404:
-        return {**out, "status": "unlisted", "releases": []}          # private repository without a token
+        return {**out, "status": "unlisted", "releases": []}          # no releases listed (none yet, or a private repository without a token)
     if r.status_code != 200:
         return {**out, "status": "refused", "http": r.status_code, "releases": []}
     try:

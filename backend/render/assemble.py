@@ -75,16 +75,8 @@ def mix_audio(project: dict, timeline: dict, voice_assets: dict, settings: dict,
 
 
 def final_assemble(segments: list[Path], timeline: dict, scenes: list[dict], audio_wav: Path, out_mp4: Path,
-                   workdir: Path, style: dict | None, quality: str, captions: bool, fps: int, footage: dict | None = None) -> dict:
-    """footage (optional): {"path", "layout": "full" | "split", "start", "loop"}. "full" shows only the footage; "split" stacks the story
-    scenes (top half) over the footage (bottom half) and moves the captions to the seam between them."""
+                   workdir: Path, style: dict | None, quality: str, captions: bool, fps: int) -> dict:
     q = QUALITY.get(quality, QUALITY["standard"])
-    W, H = config.WIDTH, config.HEIGHT
-    layout = footage["layout"] if footage else None
-    if layout == "split":
-        sub = dict((style or {}).get("subtitle") or {})
-        sub["position"] = "middle"
-        style = {**(style or {}), "subtitle": sub}
     ass_text = build_ass(timeline, scenes, style)
     (workdir / "captions.ass").write_text(ass_text, encoding="utf-8")
     (workdir / "captions.srt").write_text(build_srt(timeline), encoding="utf-8")
@@ -96,12 +88,8 @@ def final_assemble(segments: list[Path], timeline: dict, scenes: list[dict], aud
     inputs: list[str] = []
     for s in segments:
         inputs += ["-i", str(s.resolve())]
-    n = len(segments)
-    foot_idx = n
-    if footage:
-        inputs += (["-stream_loop", "-1"] if footage.get("loop") else ["-ss", f"{float(footage.get('start', 0)):.2f}"]) + ["-i", str(Path(footage["path"]).resolve())]
-    aidx = n + (1 if footage else 0)
     inputs += ["-i", str(audio_wav.resolve())]
+    n = len(segments)
     parts: list[str] = []
     last = "0:v"
     for i in range(1, n):
@@ -110,16 +98,6 @@ def final_assemble(segments: list[Path], timeline: dict, scenes: list[dict], aud
         parts.append(f"[{last}][{i}:v]xfade=transition={tr['name']}:duration={max(tr['dur'], 0.04):.3f}:offset={timeline['scenes'][i]['start']:.3f}[{out}]")
         last = out
     vlabel = last
-    if footage:
-        fill = lambda w, h: f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps={fps},setsar=1,format=yuv420p"
-        if layout == "full":
-            parts.append(f"[{foot_idx}:v]{fill(W, H)}[fv]")
-        else:
-            half = H // 2
-            parts.append(f"[{vlabel}]crop={W}:{half}:0:{(H - half) // 2},setsar=1,format=yuv420p[top]")   # the middle band of each story frame
-            parts.append(f"[{foot_idx}:v]{fill(W, half)}[bot]")
-            parts.append("[top][bot]vstack=inputs=2[fv]")
-        vlabel = "fv"
     if captions:
         parts.append(f"[{vlabel}]subtitles=captions.ass:fontsdir=fonts[vout]")
         vlabel = "vout"
@@ -128,7 +106,7 @@ def final_assemble(segments: list[Path], timeline: dict, scenes: list[dict], aud
         vlabel = "vout"
     # The mixed track is a plain mono WAV with no channel-layout tag. FFmpeg 5.x (Debian/Ubuntu servers) cannot carry that through
     # loudnorm into the AAC encoder, so state the layout (stereo, what social platforms expect) before and after the normaliser.
-    parts.append(f"[{aidx}:a]aformat=channel_layouts=stereo,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,aformat=channel_layouts=stereo[aout]")
+    parts.append(f"[{n}:a]aformat=channel_layouts=stereo,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,aformat=channel_layouts=stereo[aout]")
     cmd = [config.FFMPEG, "-y", "-loglevel", "error", *inputs, "-filter_complex", ";".join(parts),
            "-map", f"[{vlabel}]", "-map", "[aout]", "-t", f"{timeline['total']:.3f}", "-r", str(fps),
            "-c:v", "libx264", "-preset", q["fpreset"], "-crf", str(q["fcrf"]), "-pix_fmt", "yuv420p",
@@ -136,7 +114,7 @@ def final_assemble(segments: list[Path], timeline: dict, scenes: list[dict], aud
     r = subprocess.run(cmd, cwd=str(workdir), capture_output=True, text=True, timeout=1800)
     if r.returncode != 0:
         raise RuntimeError("FFmpeg assembly failed: " + r.stderr[-700:])
-    return {"cmd_inputs": n + (1 if footage else 0)}
+    return {"cmd_inputs": n}
 
 
 def verify_video(path: Path, expect_audio: bool = True) -> dict:

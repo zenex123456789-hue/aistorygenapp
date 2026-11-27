@@ -173,7 +173,7 @@ python tools/smoke_test.py https://your-address your-personal-code --render
 
 It checks that nothing is readable without signing in, that your code works, and that a 10-second video really renders and can be streamed. (If your server has AI keys, `--render` uses a little of your credit.)
 
-**What has been tested:** the Docker image is built and tested by GitHub on every change (**Actions → Server image check**): FFmpeg features, refusing to start without codes, a root-owned data volume, login protection, a real render, a range request on the video, the gameplay-footage upload and both footage layouts, and data surviving a restart. I have **not** deployed it on Railway or a rented server myself, and I have not tried it with real Anthropic or ElevenLabs keys on a server, so expect to read a log or two the first time.
+**What has been tested:** the Docker image is built and tested by GitHub on every change (**Actions → Server image check**): FFmpeg features, refusing to start without codes, a root-owned data volume, login protection, a real render, a range request on the video, and data surviving a restart. I have **not** deployed it on Railway or a rented server myself, and I have not tried it with real Anthropic or ElevenLabs keys on a server, so expect to read a log or two the first time.
 
 ### Install on a phone
 
@@ -182,19 +182,6 @@ It checks that nothing is readable without signing in, that your code works, and
 * **Android, as a web app:** open your address in Chrome, sign in, then menu **⋮ → Install app** (or **Add to Home screen**).
 * **Android, as an APK file:** set a repository variable `SERVER_URL` to your address (**Settings → Secrets and variables → Actions → Variables**), then run **Actions → Android APK → Run workflow** and download `Story-Factory.apk` from the run's **Artifacts**. The file contains only your address, no keys, so you can send it to friends directly. They must allow "install unknown apps", and Google Play Protect may warn because it is not from the Play Store. The APK is signed with a throwaway debug key, so installing a newer one over an older one fails: uninstall the old one first. You only need a new APK if the address changes.
   The Android build is checked by GitHub for a valid package with internet permission; I have **not** run it on a real phone.
-
-## Gameplay footage (story over your own Roblox clips)
-
-Many story videos on TikTok and Shorts (the "huss huss" style among them) are a voice telling a story over screen-recorded game footage. Story Factory can make that layout: **upload your own screen recording and it becomes the picture**, with the generated voice, captions, sound effects and music on top.
-
-1. Record some gameplay yourself (Roblox, Minecraft, anything): Game Bar on Windows (**Win + Alt + R**), **Screen Recording** in the iPhone Control Center, or Android's screen recorder. A **vertical phone recording** looks best; wide recordings are cropped to the middle. Make it longer than your video so it does not repeat (shorter clips loop).
-2. Open the **Video Renderer** page, find the **Gameplay footage** card, tap **Upload a clip**.
-3. Choose a layout:
-   * **Split: story + footage**: the story's drawn scenes on the top half, your clip on the bottom half, captions on the line between.
-   * **Full screen footage**: only your clip, the story told by voice and captions. The scenes are not drawn at all, so these videos render much faster. This is the closest to the lip-dub style.
-4. Press **Render video**. The Render report says which clip and layout were used.
-
-What this is **not**: the app never connects to Roblox and cannot make Roblox footage or use Roblox avatars; it only uses the files you upload. Its own characters are original blocky figures. There is no built-in "huss" breathing sound or basketball animation; for the closest match, record that in your clip. Voices are the offline blips unless an ElevenLabs key is set, so connect one for real speech. Only upload footage you recorded yourself or have permission to use. Clips use disk space on the server, and your host may refuse very large uploads (the app itself accepts up to 800 MB per upload).
 
 ## How it works
 

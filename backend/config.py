@@ -31,14 +31,13 @@ _load_dotenv()
 DATA_DIR = Path(os.getenv("SF_DATA_DIR", str(ROOT / "data"))).resolve()
 PROJECTS_DIR = DATA_DIR / "projects"
 REFERENCES_DIR = DATA_DIR / "references"
-FOOTAGE_DIR = DATA_DIR / "footage"
 CACHE_DIR = DATA_DIR / "cache"
 DB_PATH = DATA_DIR / "storyfactory.db"
 LIBRARY_DIR = ROOT / "library"
 FONTS_DIR = ROOT / "assets" / "fonts"
 FRONTEND_DIR = ROOT / "frontend"
 
-for _d in (DATA_DIR, PROJECTS_DIR, REFERENCES_DIR, FOOTAGE_DIR, CACHE_DIR):
+for _d in (DATA_DIR, PROJECTS_DIR, REFERENCES_DIR, CACHE_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 try:                                   # drop your own music/SFX files in here (see README)
     (LIBRARY_DIR / "music").mkdir(parents=True, exist_ok=True)
@@ -78,9 +77,6 @@ DEFAULT_SETTINGS = {
     "sfx_volume": 0.55,
     "voice_volume": 1.0,
     "captions": True,
-    # gameplay footage (your own screen recordings) behind or beside the story
-    "footage_layout": "off",         # off | split (story on top, footage below) | full (footage fills the screen)
-    "footage_id": "",
     # viral engine
     "viral_threshold": 65,
     "auto_improve": True,

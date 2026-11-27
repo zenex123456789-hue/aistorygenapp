@@ -57,10 +57,8 @@ jobs:
           docker exec sf id
           docker exec sf stat -c "data dir owner: %u" /data
 
-      - name: Smoke test (login, protection, real render, footage layouts)
-        run: |
-          command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; }
-          python3 tools/smoke_test.py http://127.0.0.1:8000 Kd83hq2LzPwx --render --footage
+      - name: Smoke test (login, protection, real render)
+        run: python3 tools/smoke_test.py http://127.0.0.1:8000 Kd83hq2LzPwx --render
 
       - name: Data survives a restart
         run: |

@@ -20,7 +20,6 @@ import cv2
 import numpy as np
 
 from . import audio_util, config, db, providers
-from . import footage as footage_store
 from .engines import offline, schemas as S, viral, voices as voice_engine
 from .engines import llm_engine
 from .jobs import JobContext
@@ -525,19 +524,6 @@ def stage_render(ctx, pid, prog) -> dict:
     done = {"n": 0}
     scene_reports: list[dict] = []
 
-    # Gameplay footage: the user's own screen recording, behind the story ("full") or under it ("split")
-    foot = None
-    layout = settings.get("footage_layout", "off")
-    if layout in ("full", "split"):
-        meta = footage_store.get(settings.get("footage_id") or "")
-        if meta and footage_store.video_path(meta).exists():
-            foot = {**footage_store.plan(meta, tl["total"], pid), "layout": layout, "path": footage_store.video_path(meta), "name": meta["name"], "id": meta["id"]}
-        elif settings.get("allow_fallback", True):
-            warn(pid, "render", "Gameplay footage is switched on, but no usable clip is selected, so this video was made without it. Pick or upload a clip on the Render page.")
-        else:
-            raise RuntimeError("Gameplay footage is switched on but no usable clip is selected. Pick or upload a clip on the Render page, or switch footage off.")
-    full = bool(foot and foot["layout"] == "full")
-
     def one(i: int, sc: dict):
         va = (p.get("visual_assets") or {}).get(sc["id"], {"mode": "procedural"})
         plan = build_plan(p, sc, tl_by[sc["id"]], fps, style)
@@ -558,54 +544,35 @@ def stage_render(ctx, pid, prog) -> dict:
 
     workers = max(1, min(os.cpu_count() or 2, 3))
     results: dict[int, Path] = {}
-    if full:
-        # the footage fills the screen, so the built-in scene drawing is skipped entirely (a full-footage render is much quicker)
-        prog(0.05, f"Using your gameplay footage ({foot['name']}) as the picture; the story is told by voice, captions and sound.")
-        for tsc in tl["scenes"]:
-            sc = next(x for x in p["scenes"] if x["id"] == tsc["id"])
-            scene_reports.append({"scene": sc["id"], "title": sc["title"], "source": "Your gameplay footage (story pictures not drawn)",
-                                  "duration": round(tsc["duration"], 2), "fallback_reason": None})
-        segments: list[Path] = []
-    else:
-        prog(0.02, f"Rendering {n} scenes at {config.WIDTH}x{config.HEIGHT}, {fps} fps ({settings.get('quality', 'standard')} quality)…")
-        with ThreadPoolExecutor(max_workers=workers) as ex:
-            futs = [ex.submit(one, i, sc) for i, sc in enumerate(p["scenes"])]
-            for f in as_completed(futs):
-                i, out, rep = f.result()
-                results[i] = out
-                scene_reports.append(rep)
-                done["n"] += 1
-                prog(0.05 + 0.8 * done["n"] / n, f"Rendered scene {done['n']}/{n}")
-        segments = [results[i] for i in range(n)]
-    prog(0.88, "Assembling: " + ("gameplay footage, " if foot else "transitions, ") + "captions, loudness-normalised audio…")
+    prog(0.02, f"Rendering {n} scenes at {config.WIDTH}x{config.HEIGHT}, {fps} fps ({settings.get('quality', 'standard')} quality)…")
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futs = [ex.submit(one, i, sc) for i, sc in enumerate(p["scenes"])]
+        for f in as_completed(futs):
+            i, out, rep = f.result()
+            results[i] = out
+            scene_reports.append(rep)
+            done["n"] += 1
+            prog(0.05 + 0.8 * done["n"] / n, f"Rendered scene {done['n']}/{n}")
+    segments = [results[i] for i in range(n)]
+    prog(0.88, "Assembling: transitions, captions, loudness-normalised audio…")
     final = rdir / "final.mp4"
     assemble.final_assemble(segments, tl, p["scenes"], mix, final, rdir, style, settings.get("quality", "standard"),
-                            bool(settings.get("captions", True)), fps, footage=foot)
+                            bool(settings.get("captions", True)), fps)
     prog(0.96, "Verifying the finished file…")
     info = assemble.verify_video(final)                          # raises if the file is not a real 1080x1920 video with audio
     name = f"{S.slug(p['name'])}_{int(time.time())}.mp4"
     versioned = rdir / name
     shutil.copy(final, versioned)
     thumb = rdir / (versioned.stem + "_thumb.jpg")
-    if foot:                                                      # the cover picture comes from the finished video, so it shows the footage
-        cap = cv2.VideoCapture(str(final))
-        cap.set(cv2.CAP_PROP_POS_MSEC, 800)
-        ok, frame = cap.read()
-        cap.release()
-        if not ok:
-            raise RuntimeError("Could not read a cover frame from the finished video.")
-        cv2.imwrite(str(thumb), cv2.resize(frame, (540, 960)))
-    else:
-        plan0 = build_plan(p, p["scenes"][0], tl_by[p["scenes"][0]["id"]], fps, style)
-        cv2.imwrite(str(thumb), cv2.resize(scene_render.render_still(plan0, 1.0, res=0.5), (540, 960)))
+    plan0 = build_plan(p, p["scenes"][0], tl_by[p["scenes"][0]["id"]], fps, style)
+    cv2.imwrite(str(thumb), cv2.resize(scene_render.render_still(plan0, 1.0, res=0.5), (540, 960)))
     vf = db.register_file(pid, "video", versioned, f"{p['name']}.mp4", {"info": info})
     tf = db.register_file(pid, "image", thumb, f"{p['name']} - thumbnail.jpg")
     scene_reports.sort(key=lambda r: r["scene"])
     estimated = sum(1 for t in tl["scenes"] for ln in t["lines"] if ln.get("timing") == "estimated")
     report = {"status": "rendered", "video_file_id": vf["id"], "thumb_file_id": tf["id"], "info": info, "scenes": scene_reports,
               "voice_provider": providers.tts().name, "quality": settings.get("quality"), "rendered_at": time.time(),
-              "caption_timing_estimated_lines": estimated,
-              "footage": ({"id": foot["id"], "name": foot["name"], "layout": foot["layout"], "start": foot["start"], "looped": foot["loop"]} if foot else None)}
+              "caption_timing_estimated_lines": estimated}
     db.update_project(pid, lambda pp: pp.__setitem__("render", report))
     return {"duration": info["duration"], "size_mb": info["size_mb"]}
 

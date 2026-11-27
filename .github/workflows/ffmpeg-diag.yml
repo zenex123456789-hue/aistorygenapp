@@ -1,0 +1,32 @@
+name: FFmpeg diagnose (temporary)
+on: workflow_dispatch
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Try audio filter variants on Debian bookworm FFmpeg
+        run: |
+          cat > diag.sh <<'SH'
+          set -u
+          apt-get update -qq >/dev/null && apt-get install -y -qq ffmpeg python3 >/dev/null 2>&1
+          ffmpeg -version | head -1
+          python3 - <<'PY'
+          import wave, math, struct
+          w = wave.open("/tmp/mono.wav", "wb"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(44100)
+          w.writeframes(b"".join(struct.pack("<h", int(8000*math.sin(i/20.0))) for i in range(44100*3))); w.close()
+          PY
+          ffprobe -v error -show_entries stream=channels,channel_layout -of default=nw=1 /tmp/mono.wav
+          try() { name="$1"; shift; if ffmpeg -y -loglevel error "$@" /tmp/o.m4a 2>/tmp/err.txt; then echo "OK    $name"; else echo "FAIL  $name :: $(tail -c 160 /tmp/err.txt | tr '\n' ' ')"; fi; }
+          IN="-i /tmp/mono.wav"
+          try A_current           $IN -filter_complex "[0:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[aout]" -map "[aout]" -c:a aac -b:a 192k
+          try B_aformat_before    $IN -filter_complex "[0:a]aformat=channel_layouts=stereo,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[aout]" -map "[aout]" -c:a aac -b:a 192k
+          try C_aformat_after     $IN -filter_complex "[0:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,aformat=channel_layouts=stereo[aout]" -map "[aout]" -c:a aac -b:a 192k
+          try D_aformat_both      $IN -filter_complex "[0:a]aformat=channel_layouts=stereo,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,aformat=channel_layouts=stereo[aout]" -map "[aout]" -c:a aac -b:a 192k
+          try E_ac2               $IN -filter_complex "[0:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[aout]" -map "[aout]" -ac 2 -c:a aac -b:a 192k
+          try F_resample_first    $IN -filter_complex "[0:a]aresample=48000,loudnorm=I=-14:TP=-1.5:LRA=11[aout]" -map "[aout]" -c:a aac -b:a 192k
+          try G_ochl              $IN -filter_complex "[0:a]aresample=48000:ochl=stereo,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[aout]" -map "[aout]" -c:a aac -b:a 192k
+          try H_pan               $IN -filter_complex "[0:a]pan=stereo|c0=c0|c1=c0,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[aout]" -map "[aout]" -c:a aac -b:a 192k
+          try I_guess_layout      -guess_layout_max 0 -i /tmp/mono.wav -filter_complex "[0:a]loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[aout]" -map "[aout]" -c:a aac -b:a 192k
+          try J_loudnorm_mono_fmt $IN -filter_complex "[0:a]aformat=channel_layouts=mono,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000,aformat=channel_layouts=stereo[aout]" -map "[aout]" -c:a aac -b:a 192k
+          SH
+          docker run --rm -v "$PWD/diag.sh:/diag.sh:ro" debian:bookworm-slim bash /diag.sh

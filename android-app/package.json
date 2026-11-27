@@ -1,11 +1,12 @@
 {
-  "name": "story-factory-android",
+  "name": "story-factory-mobile",
   "version": "1.0.0",
   "private": true,
-  "description": "Thin Android wrapper: opens a Story Factory server (your hosted address, set when the app is built) in an app window.",
+  "description": "Thin Android and iPhone wrappers: open a Story Factory server (your hosted address, set when the app is built) in an app window.",
   "dependencies": {
     "@capacitor/android": "^6.2.0",
     "@capacitor/cli": "^6.2.0",
-    "@capacitor/core": "^6.2.0"
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/ios": "^6.2.0"
   }
 }

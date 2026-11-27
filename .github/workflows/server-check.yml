@@ -23,16 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Version numbers agree (installer and app)
-        run: |
-          python3 - <<'PY'
-          import re
-          i = re.search(r'AppVersion "([^"]+)"', open("installer/AIStoryFactory.iss").read()).group(1)
-          v = re.search(r'VERSION = "([^"]+)"', open("backend/version.py").read()).group(1)
-          assert i == v, f"installer says {i} but backend/version.py says {v}"
-          print("version", v)
-          PY
-
       - name: Build the image
         run: docker build -t sf-test .
 

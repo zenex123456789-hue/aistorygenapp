@@ -11,6 +11,11 @@ characters, scenes, voiceovers, captions, sound effects and music, plus titles, 
 ## Download
 
 ### [⬇ Download for Windows (AI-Story-Factory-Setup.exe)](https://github.com/zenex123456789-hue/aistorygenapp/releases/latest/download/AI-Story-Factory-Setup.exe)
+### [⬇ Download for Android (Story-Factory.apk)](https://github.com/zenex123456789-hue/aistorygenapp/releases/latest/download/Story-Factory.apk)
+### [⬇ Download for iPhone (Story-Factory.ipa)](https://github.com/zenex123456789-hue/aistorygenapp/releases/latest/download/Story-Factory.ipa)
+
+The Android and iPhone files are small apps that open your group's [hosted address](#host-it-for-your-group-phones-and-any-browser); they need that server to exist.
+The iPhone file is **unsigned** and has to be installed with a free sideloading tool, see [Install on a phone](#install-on-a-phone). If a link gives a 404, you are probably not signed in to GitHub (the repository is private), or that release does not include the file yet.
 
 1. Download and run the installer. No Python or FFmpeg needed; it installs for your user only, with no admin password.
 2. Windows may show **"Windows protected your PC"** because the installer isn't code-signed. Click **More info → Run anyway**.
@@ -70,7 +75,7 @@ It refuses to start on a reachable address without access codes.
 * **What the installer contains:** Python, the app and FFmpeg. It installs for your user only (no admin password) and opens in its own window.
   If Windows' built-in web view (WebView2) isn't available, the app opens in your default browser instead.
 * **Where files go:** program in `%LOCALAPPDATA%\Programs\AI Story Factory`, your projects, videos and log in `%LOCALAPPDATA%\AIStoryFactory`.
-* **Updates:** the **New Updates** button (left menu) and the **Releases** button (bottom of Settings) open the page where new installers are published. **New Updates** compares your version with the newest release and gives you the download button when there is one. While the repository is private, the app cannot look inside it, so it will say so and send you to the Releases page to compare versions yourself (make the repository public, or put a read-only token in `.env` as `SF_UPDATE_TOKEN`, to get the automatic check). Run the new installer over the old one; projects live in a separate folder. The check only asks GitHub for the newest release, only when you press the button.
+* **Updates:** **New Updates** (left menu) tells you whether a newer version exists and downloads the installer for you; **Releases** (bottom of Settings) lists every release, and the arrow next to one shows what changed and its files (Windows, Android, iPhone), each with a download button. Downloads happen inside the app, not on GitHub. Run the new installer over the old one; projects live in a separate folder. Release notes come from the release description on GitHub, or from `CHANGELOG.md` when that is empty. The app version comes from the release tag (`v0.2.1` becomes 0.2.1). **While the repository is private the app needs a read-only token to see releases** (see below); without it, it says so and offers to open GitHub instead. It only contacts GitHub when you open these windows.
 * **Adding API keys:** create `%LOCALAPPDATA%\AIStoryFactory\.env` (same lines as `.env.example`), then close and reopen the app. Keys built into the installer are described in [Shared keys](#shared-keys-for-a-private-group); yours take priority.
 * **Uninstall:** Windows Settings → Apps → AI Story Factory. Your projects stay until you delete the `AIStoryFactory` folder yourself.
 * **How the installer is made:** publishing a release with a tag like `v1.0.0` runs **Actions → Windows installer**, which builds it and attaches
@@ -117,6 +122,15 @@ Claude's API is a separate, pay-as-you-go product. You create an API key at <htt
 * **Their own key wins.** If someone puts a key in `%LOCALAPPDATA%\AIStoryFactory\.env`, that is used instead of the shared one.
 * **A safer design for a bigger group** is a small server that holds the keys and checks who is calling, so no key ever leaves it. That is a different (hosted) setup; it is not what this installer does.
 
+## Letting the app list and download releases (private repository)
+
+GitHub does not show a private repository's releases to a program without a sign-in, so the in-app **Releases** and **New Updates** need a read-only token. (If you make the repository public they work with no token, but the build then stops embedding shared keys.)
+
+1. GitHub → your profile picture → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+2. Resource owner: you. **Repository access: Only select repositories**, choose this one. **Permissions → Repository permissions → Contents: Read-only** (Metadata is added automatically). Pick an expiry; when it ends, the in-app list stops working until you make a new token.
+3. **Windows installer:** add the token as a repository secret named `UPDATE_TOKEN` (Settings → Secrets and variables → Actions), then publish a new release. It is embedded the same way as shared keys, so anyone with the installer can extract it. It can only read this one repository, which people with the installer already have access to. Keep the repository private and give the installer only to people you trust.
+4. **Hosted version:** add it as the variable `SF_UPDATE_TOKEN` on your host. It stays on the server; friends signed in on a phone can then download the Android and iPhone files from **Releases** without a GitHub account.
+
 ## Host it for your group (phones and any browser)
 
 Run one copy of the app on a server. Everyone opens the same `https://` address on any device, signs in with **their own personal code**, and makes videos together.
@@ -152,7 +166,7 @@ It prints one line to paste into the `SF_ACCESS_CODES` setting and a code to sen
 
 1. Go to <https://railway.com>, sign in with GitHub, choose **New Project → GitHub repo** and pick this repository. Choose **Add Variables** before the first deploy.
 2. Add these variables (see `host.env.example`):
-   `SF_ACCESS_CODES` (the line from step 1), `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, and optionally `SF_DAILY_RUNS`. Railway builds the `Dockerfile` in this repo.
+   `SF_ACCESS_CODES` (the line from step 1), `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, and optionally `SF_DAILY_RUNS` and `SF_UPDATE_TOKEN` (lets friends download the app files from **Releases**, see [above](#letting-the-app-list-and-download-releases-private-repository)). Railway builds the `Dockerfile` in this repo.
 3. **Add a volume to the service and set its mount path to `/data`.** Without it, every project and video is deleted each time the service redeploys. (Railway's volumes guide: <https://docs.railway.com/volumes>.)
 4. In the service's settings click **Generate Domain**. That `https://...up.railway.app` address is what you give your group.
 5. In Railway's usage settings set a **hard limit** so a surprise cannot run up a bill (it takes the app offline when reached).
@@ -248,8 +262,8 @@ tools/                     make_codes.py (personal codes), smoke_test.py (check 
 .github/workflows/         cloud builds: Windows installer, Android APK, server image check
 backend/app.py             Flask JSON API + static files
 backend/auth.py            access codes, daily run cap, request checks for the hosted version
-backend/version.py         the app version (keep equal to installer/AIStoryFactory.iss and the release tag)
-backend/updates.py         the New Updates check against GitHub Releases
+backend/version.py         the app version (release builds take it from the tag)
+backend/updates.py         lists GitHub releases and passes their files through as downloads
 backend/pipeline.py        stage orchestration (pause, resume, stale tracking)
 backend/jobs.py            background jobs + progress + cancel
 backend/providers/         LLM / TTS / image / video provider interfaces + adapters

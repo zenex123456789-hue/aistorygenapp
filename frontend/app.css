@@ -272,4 +272,22 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13px; } table.t th 
   input, select, textarea { font-size: 16px; }
   .topbar select { max-width: 52vw; }
 }
+/* ---------- releases list ---------- */
+.modal.wide { width: min(680px, 100%); }
+.rel { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.rel + .rel { margin-top: 8px; }
+.rel-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 13px; border: 0; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; flex-wrap: wrap; }
+.rel-head:hover { background: rgba(108, 92, 231, .06); }
+.rel-arrow { display: inline-block; width: 16px; transition: transform .18s; color: var(--muted); flex: none; }
+.rel.open .rel-arrow { transform: rotate(90deg); }
+.rel-title { font-weight: 700; }
+.rel-date { margin-left: auto; font-size: 12px; color: var(--muted); }
+.rel-body { padding: 4px 14px 14px 39px; display: none; }
+.rel.open .rel-body { display: block; }
+@media (max-width: 640px) { .rel-body { padding-left: 14px; } .rel-date { margin-left: 0; } }
+.rel-notes { font-size: 13.5px; line-height: 1.5; margin-bottom: 10px; }
+.rel-notes ul { margin: 4px 0 4px 18px; padding: 0; }
+.rel-notes .rel-h { font-weight: 700; margin-top: 8px; }
+.rel-notes code { font-size: 12.5px; background: var(--soft2); padding: 1px 5px; border-radius: 6px; }
+.rel-files { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

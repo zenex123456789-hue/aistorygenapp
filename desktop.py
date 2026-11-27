@@ -85,7 +85,8 @@ def load_builtin_env(folder: Path) -> list:
         if not os.environ.get(k):
             os.environ[k] = v
             applied.append(k)
-    os.environ["SF_SHARED_KEYS"] = ",".join(applied)
+    # the update token only lets the app read the releases page; it is not an AI key, so it is not counted as a "shared key"
+    os.environ["SF_SHARED_KEYS"] = ",".join(k for k in applied if k != "SF_UPDATE_TOKEN")
     return applied
 
 
@@ -131,7 +132,7 @@ def selftest(port: int, home: Path) -> int:
             index_ok = r.status == 200 and b"Story Factory" in r.read()
         shared = [k for k in os.environ.get("SF_SHARED_KEYS", "").split(",") if k]
         # If this build carries shared keys they must actually have been picked up, or the group would get an app that silently has no AI.
-        keys_ok = bool(shared) or not (HERE / "builtin.env").exists()
+        keys_ok = bool(shared) or bool(os.environ.get("SF_UPDATE_TOKEN")) or not (HERE / "builtin.env").exists()
         result.update(health=health, index_ok=index_ok, shared_keys=shared, keys_ok=keys_ok,
                       ok=bool(health.get("ok") and health.get("ffmpeg") and index_ok and keys_ok))
     except Exception as e:  # noqa: BLE001

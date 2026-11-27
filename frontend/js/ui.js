@@ -54,10 +54,10 @@ export function toast(msg, kind = "") {
   setTimeout(() => { t.style.transition = "opacity .3s"; t.style.opacity = "0"; setTimeout(() => t.remove(), 320); }, kind === "bad" ? 7000 : 3200);
 }
 
-export function modal(build) {
+export function modal(build, cls = "") {
   return new Promise((resolve) => {
     const close = (v) => { bg.remove(); resolve(v); };
-    const box = h("div", { class: "modal" });
+    const box = h("div", { class: "modal " + cls });
     const bg = h("div", { class: "modal-bg", onmousedown: (e) => { if (e.target === bg) close(null); } }, box);
     box.append(build(close));
     document.body.append(bg);

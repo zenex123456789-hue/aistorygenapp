@@ -2,7 +2,7 @@ import { post, put } from "../api.js";
 import { S, loadCaps } from "../state.js";
 import { h, icon, toast, field, select, toggle, slider, title } from "../ui.js";
 import { getMode, setTheme } from "../theme.js";
-import { showUpdates, openLink } from "../updates.js";
+import { showUpdates, showReleases } from "../updates.js";
 
 const KINDS = [
   ["llm", "Story writer (LLM)", "Writes the story, characters, script and the viral critique."],
@@ -76,8 +76,8 @@ export function render(root) {
     h("div", { class: "small muted" }, "Output format: 1080×1920 (9:16), H.264 video, AAC audio, loudness-normalised to −14 LUFS.")));
 
   root.append(h("div", { class: "card" }, h("h3", { style: { marginBottom: "6px" } }, "Releases"),
-    h("div", { class: "small muted" }, `This app is version ${caps.version || "unknown"}. New versions of the Windows installer, Android app and iPhone file are published on the Releases page.`),
+    h("div", { class: "small muted" }, (caps.hosted ? "" : `This app is version ${caps.version || "unknown"}. `) + "See every release with what changed, and download the Windows installer, Android app or iPhone file right here."),
     h("div", { class: "row wrap", style: { marginTop: "12px" } },
-      h("button", { class: "btn primary", onclick: () => openLink(caps.releases_url) }, icon("download", 15), "Releases"),
-      h("button", { class: "btn", onclick: () => showUpdates() }, icon("refresh", 14), "Check for new updates"))));
+      h("button", { class: "btn primary", onclick: () => showReleases() }, icon("download", 15), "Releases"),
+      caps.hosted ? null : h("button", { class: "btn", onclick: () => showUpdates() }, icon("refresh", 14), "Check for new updates"))));
 }

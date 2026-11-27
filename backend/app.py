@@ -9,7 +9,7 @@ import shutil
 import time
 from pathlib import Path
 
-from flask import Flask, abort, jsonify, request, send_file, send_from_directory
+from flask import Flask, Response, abort, jsonify, request, send_file, send_from_directory, stream_with_context
 from werkzeug.utils import secure_filename
 
 from . import audio_util, auth, config, db, jobs, pipeline, providers, updates
@@ -78,6 +78,45 @@ def update_check():
     return jsonify(updates.check())
 
 
+@app.get("/api/releases")
+def releases_list():
+    return jsonify(updates.list_releases())
+
+
+@app.get("/api/releases/asset/<int:asset_id>/check")
+def release_asset_check(asset_id):
+    """Is this file reachable? Lets the page show a clear message instead of saving an error page as a download."""
+    try:
+        r = updates.open_asset(asset_id)
+    except updates.AssetError as exc:
+        return err(exc.msg, exc.status)
+    size = r.headers.get("Content-Length")
+    r.close()
+    return jsonify({"ok": True, "size": int(size) if size and size.isdigit() else None})
+
+
+@app.get("/api/releases/asset/<int:asset_id>/file/<path:name>")
+def release_asset_file(asset_id, name):
+    """Pass a release file from GitHub through to the person as a download (the app fetches it, nobody is sent to GitHub)."""
+    try:
+        r = updates.open_asset(asset_id)
+    except updates.AssetError as exc:
+        return err(exc.msg, exc.status)
+    headers = {"Content-Disposition": f'attachment; filename="{secure_filename(name) or "download-" + str(asset_id)}"', "Cache-Control": "no-store"}
+    if (r.headers.get("Content-Length") or "").isdigit():
+        headers["Content-Length"] = r.headers["Content-Length"]
+
+    def body():
+        try:
+            for chunk in r.iter_content(1 << 20):
+                if chunk:
+                    yield chunk
+        finally:
+            r.close()
+
+    return Response(stream_with_context(body()), mimetype="application/octet-stream", headers=headers)
+
+
 @app.post("/api/open-external")
 def open_external():
     """Desktop app only: open a page of this project's GitHub repository in the person's normal browser."""
@@ -97,7 +136,7 @@ def capabilities():
     shared = [k for k in os.environ.get("SF_SHARED_KEYS", "").split(",") if k]     # names only, never values
     return jsonify({"providers": caps, "ffmpeg": audio_util.ffmpeg_ok(), "settings": db.get_settings(),
                     "shared_keys": shared, "env_file": os.environ.get("SF_ENV_FILE", ""), "auth": auth.status(),
-                    "version": VERSION, "releases_url": updates.RELEASES_URL,
+                    "version": VERSION, "releases_url": updates.RELEASES_URL, "hosted": bool(config.HOSTED),
                     "enums": {"genres": S.GENRES, "tones": S.TONES, "audiences": S.AUDIENCES, "lengths": list(S.LENGTHS), "durations": S.DURATIONS,
                               "location_kinds": S.LOCATION_KINDS, "emotions": S.EMOTIONS, "deliveries": S.DELIVERIES, "animations": S.ANIMATIONS,
                               "forms": S.FORMS, "effects": S.EFFECTS, "camera_shots": S.CAMERA_SHOTS, "camera_moves": S.CAMERA_MOVES,

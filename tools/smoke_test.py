@@ -80,6 +80,8 @@ def main(argv: list[str]) -> int:
     print(f"INFO  writer: {llm.get('label')}   voices: {tts.get('label')}")
     s, upd = me.json("GET", "/api/update-check")
     check("the update check answers (needs no internet to do so)", s == 200 and bool(upd.get("current")) and bool(upd.get("status")), f"{s} {upd}")
+    s, rel = me.json("GET", "/api/releases")
+    check("the releases list answers (whatever GitHub says)", s == 200 and bool(rel.get("status")) and isinstance(rel.get("releases"), list), f"{s} {rel}")
     s, page, _, _ = me.req("GET", "/")
     check("the home page opens when signed in", s == 200 and b"Story Factory" in page, str(s))
 

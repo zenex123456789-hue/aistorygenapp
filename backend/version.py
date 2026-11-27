@@ -1,2 +1,3 @@
-"""The app's version. Keep it equal to AppVersion in installer/AIStoryFactory.iss and to the release tag (v0.1.0 -> "0.1.0") when you publish a release."""
-VERSION = "0.1.0"
+"""The app's version. Installer builds made from a release tag (v0.2.1 -> "0.2.1") overwrite this file with the tag's number before building,
+so publishing a release is enough. Local runs and the hosted server show the number below."""
+VERSION = "0.2.0"

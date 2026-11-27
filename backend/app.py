@@ -76,12 +76,12 @@ def health():
 
 @app.get("/api/update-check")
 def update_check():
-    return jsonify(updates.check())
+    return jsonify(updates.check(fresh=request.args.get("refresh") == "1"))
 
 
 @app.get("/api/releases")
 def releases_list():
-    return jsonify(updates.list_releases())
+    return jsonify(updates.list_releases(fresh=request.args.get("refresh") == "1"))
 
 
 @app.get("/api/releases/asset/<int:asset_id>/check")

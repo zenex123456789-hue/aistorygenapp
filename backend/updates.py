@@ -59,25 +59,78 @@ def _kind(name: str) -> str:
     return "windows" if n.endswith(".exe") else "android" if n.endswith(".apk") else "iphone" if n.endswith(".ipa") else "other"
 
 
+def _section(text: str, tag: str, unreleased: bool = False) -> str:
+    """One version's section of a CHANGELOG.md text (with unreleased=True, the "Unreleased" section counts when the version has none)."""
+    want, spare = _ver(tag), ""
+    for sec in re.split(r"(?m)^## +", text)[1:]:
+        head, _, body = sec.partition("\n")
+        first = head.split()[0] if head.split() else ""
+        if re.match(r"v?\d", first) and _ver(first) == want:
+            return body.strip()
+        if first.lower() == "unreleased":
+            spare = body.strip()
+    return spare if unreleased else ""
+
+
+_remote_notes: dict = {}
+_remote_lock = threading.Lock()
+
+
+def _remote_changelog(tag: str) -> str:
+    """CHANGELOG.md as it was at this release's tag, read from GitHub. An older installed app does not have the newer releases' notes in its own
+    copy of the file, so without this a new release would show "no notes" until the person had installed it."""
+    with _remote_lock:
+        hit = _remote_notes.get(tag)
+        if hit and time.monotonic() - hit[0] < (3600 if hit[1] else 300):
+            return hit[1]
+    text = ""
+    try:
+        r = requests.get(f"{API}/repos/{REPO}/contents/CHANGELOG.md", params={"ref": tag}, timeout=6,
+                         headers=_headers("application/vnd.github.raw+json"))
+        if r.status_code == 200:
+            text = _section(r.text, tag, unreleased=True)
+    except requests.RequestException:
+        return ""                                   # not cached: try again next time
+    with _remote_lock:
+        _remote_notes[tag] = (time.monotonic(), text)
+    return text
+
+
 def changelog_for(tag: str) -> str:
     """The section for this version from CHANGELOG.md, shipped with the app (used when a release has no notes of its own)."""
     try:
         text = (config.ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     except OSError:
         return ""
-    want = _ver(tag)
-    for sec in re.split(r"(?m)^## +", text)[1:]:
-        head, _, body = sec.partition("\n")
-        first = head.split()[0] if head.split() else ""
-        if re.match(r"v?\d", first) and _ver(first) == want:
-            return body.strip()
-    return ""
+    return _section(text, tag)
 
 
-def _asset(a: dict) -> dict:
+def file_name(name: str, tag: str) -> str:
+    """The name a downloaded file is saved under. Every release's installer is called the same on GitHub, so five downloads pile up as
+    "Setup.exe", "Setup (1).exe"... Putting the version in the name makes them tell apart (AI-Story-Factory-Setup-0.2.3.exe)."""
+    ver = ".".join(str(n) for n in _ver(tag))
+    stem, dot, ext = name.rpartition(".")
+    if not dot or not stem or ver in name:
+        return name
+    return f"{stem}-{ver}.{ext}"
+
+
+def _asset(a: dict, tag: str = "") -> dict:
     name = a.get("name", "")
-    return {"id": a["id"], "name": name, "kind": _kind(name), "size_mb": round(float(a.get("size") or 0) / 1e6, 1),
-            "check_url": f"/api/releases/asset/{a['id']}/check", "download_url": f"/api/releases/asset/{a['id']}/file/{quote(name)}"}
+    saved = file_name(name, tag) if tag else name
+    return {"id": a["id"], "name": name, "file_name": saved, "kind": _kind(name), "size_mb": round(float(a.get("size") or 0) / 1e6, 1),
+            "check_url": f"/api/releases/asset/{a['id']}/check", "download_url": f"/api/releases/asset/{a['id']}/file/{quote(saved)}"}
+
+
+def _building_tags() -> set:
+    """Tags whose installers are being built right now (a release's files are attached by the builds a few minutes after it is published)."""
+    try:
+        r = requests.get(f"{API}/repos/{REPO}/actions/runs", params={"per_page": 30}, headers=_headers(), timeout=6)
+        if r.status_code != 200:
+            return set()
+        return {str(x.get("head_branch")) for x in r.json().get("workflow_runs", []) if x.get("status") in ("queued", "in_progress", "waiting", "pending")}
+    except (requests.RequestException, ValueError, AttributeError):
+        return set()
 
 
 _cache: dict = {}
@@ -85,12 +138,12 @@ _cache_lock = threading.Lock()
 CACHE_SECONDS = 60
 
 
-def list_releases(limit: int = 20) -> dict:
+def list_releases(limit: int = 20, fresh: bool = False) -> dict:
     """GitHub lets an anonymous address make 60 calls an hour, and a hosted server is one address for the whole group,
-    so a good answer is reused for a minute."""
+    so a good answer is reused for a minute. "Refresh" asks for a new one, but not more often than every 10 seconds."""
     with _cache_lock:
         hit = _cache.get(limit)
-        if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
+        if hit and time.monotonic() - hit[0] < (10 if fresh else CACHE_SECONDS):
             return hit[1]
     res = _fetch_releases(limit)
     if res["status"] == "ok":
@@ -111,7 +164,7 @@ def _fetch_releases(limit: int) -> dict:
         return {**out, "status": "refused", "http": r.status_code, "releases": []}
     try:
         data = r.json()
-        rels, latest_seen = [], False
+        rels, latest_seen, building = [], False, None
         for x in data:
             if x.get("draft"):
                 continue
@@ -119,19 +172,24 @@ def _fetch_releases(limit: int) -> dict:
             is_latest = not latest_seen and not x.get("prerelease")
             latest_seen = latest_seen or is_latest
             page = x.get("html_url") or ""
+            files = [_asset(a, tag) for a in x.get("assets", []) if _kind(a.get("name", "")) != "other"]
+            notes = (x.get("body") or "").strip() or changelog_for(tag) or _remote_changelog(tag)
+            if not files and building is None:
+                building = _building_tags()             # one extra call, only when a release has no files
             rels.append({"tag": tag, "title": x.get("name") or tag, "published": (x.get("published_at") or "")[:10], "prerelease": bool(x.get("prerelease")),
                          "latest": is_latest, "newer": _ver(tag) > _ver(VERSION), "current": _ver(tag) == _ver(VERSION),
-                         "notes": ((x.get("body") or "").strip() or changelog_for(tag))[:4000],
+                         "notes": notes[:4000],
                          "page": page if allowed_link(page) else RELEASES_URL,
-                         "assets": [_asset(a) for a in x.get("assets", []) if _kind(a.get("name", "")) != "other"]})
+                         "building": bool(not files and tag in (building or ())),
+                         "assets": files})
     except (ValueError, KeyError, TypeError):
         return {**out, "status": "refused", "http": 200, "releases": []}
     return {**out, "status": "ok", "releases": rels}
 
 
-def check() -> dict:
+def check(fresh: bool = False) -> dict:
     """Is there a newer release than this app? (the newest non-pre-release one decides)"""
-    res = list_releases(10)
+    res = list_releases(10, fresh)
     if res["status"] != "ok":
         return {k: v for k, v in res.items() if k != "releases"}
     latest = next((r for r in res["releases"] if r["latest"]), None)
@@ -139,7 +197,7 @@ def check() -> dict:
     if not latest:
         return {**base, "status": "unlisted"}
     return {**base, "latest": latest["tag"], "newer": latest["newer"], "title": latest["title"], "published": latest["published"],
-            "notes": latest["notes"], "page": latest["page"], "assets": latest["assets"]}
+            "notes": latest["notes"], "page": latest["page"], "assets": latest["assets"], "building": latest["building"]}
 
 
 def open_asset(asset_id: int) -> requests.Response:

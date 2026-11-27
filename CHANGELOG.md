@@ -3,6 +3,12 @@
 Each release's notes are shown inside the app (Settings → Releases). Add a section here for every new release, newest first, and paste the same text into the
 release description on GitHub; the app prefers the GitHub text and falls back to this file.
 
+## Unreleased
+
+- **Releases / New Updates:** a release whose installers are still being built now says so ("being built right now, about 10 minutes") instead of "no files attached", and a **Refresh** button checks again without closing the window.
+- Downloaded files carry the version in their name (`AI-Story-Factory-Setup-0.2.3.exe`) instead of every release being called the same, and a button says "Downloaded ... download again" for a file this app already fetched, so the same setup is not saved over and over.
+- A new release's notes are read from GitHub's copy of `CHANGELOG.md` when an older installed app does not have them yet (before, a new release showed "No notes were written").
+
 ## v0.2.3 - 2026-11-27
 
 - **Write story from my prompt:** a new button next to GENERATE STORY. The AI reads what you typed as a brief and invents a story from it (new title, characters, twist and ending), and fills in the settings your prompt asked for (genre, tone, number of characters, art style...). It needs Claude to be connected: without it the app now says so instead of handing your own words back, and a warning on the Story page explains why the built-in generator only echoes your idea.
